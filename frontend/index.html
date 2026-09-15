@@ -1,0 +1,2093 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>AI Academic Navigator &amp; Visual Mathematics Solver</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<!-- KaTeX Styles & Scripts including auto-render -->
+<link href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@12.4.2/lib/browser/math.js"></script>
+<!-- Plotly.js for interactive 3D surface visualizations matching reference screenshot -->
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script><style id="plotly.js-style-global"></style><style id="plotly.js-style-global"></style><style id="plotly.js-style-global"></style>
+<style>
+body { 
+  background: #f8fafc; 
+  color: #0f172a; 
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.math-scroll { overflow-x: auto; scrollbar-width: thin; }
+.step-card { 
+  background: #ffffff; 
+  border-radius: 16px; 
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.03), 0 6px 16px -4px rgba(15,23,42,0.04); 
+}
+.border-orig { border-left: 4px solid #64748b; }
+.border-theorem { border-left: 4px solid #6366f1; }
+.border-diff { border-left: 4px solid #e11d48; }
+.border-formula { border-left: 4px solid #2563eb; }
+.border-calc { border-left: 4px solid #ea580c; }
+.border-final { border-left: 4px solid #d97706; }
+
+/* Refined Dark Midnight Sidebar Styling */
+.sidebar-dark {
+  background: #090d16;
+  border-right: 1px solid #1e293b;
+}
+.nav-item {
+  position: relative;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #94a3b8;
+}
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #f1f5f9;
+}
+.nav-item.active {
+  background: rgba(79, 70, 229, 0.14);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.25);
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15%;
+  bottom: 15%;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: #6366f1;
+}
+
+.page-view { display: none; }
+.page-view.active { display: block; }
+.katex-display { margin: 0.35rem 0 !important; }
+
+/* Clean modern card aesthetic */
+.premium-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.03), 0 10px 25px -5px rgba(15,23,42,0.04);
+}
+
+/* Micro typography uppercase labels */
+.micro-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+/* Range slider styling */
+input[type=range].ref-slider {
+  -webkit-appearance: none;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  height: 5px;
+  outline: none;
+}
+input[type=range].ref-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2.5px solid #4f46e5;
+  box-shadow: 0 2px 4px rgba(15,23,42,0.15);
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+input[type=range].ref-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  border-color: #4338ca;
+}
+
+/* Vis selector card */
+.vis-selector-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+  background: #ffffff;
+}
+.vis-selector-card:hover {
+  border-color: #a5b4fc;
+  background: #f5f3ff;
+}
+.vis-selector-card.selected {
+  border-color: #4f46e5;
+  background: #f5f3ff;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+/* Preset chip */
+.eq-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+.eq-chip:hover {
+  background: #eef2ff;
+  border-color: #a5b4fc;
+  color: #4338ca;
+}
+/* Param slider container */
+.param-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.param-row:last-child { border-bottom: none; }
+/* Empty state grid */
+.empty-grid-bg {
+  background-image: linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+</style>
+</head>
+<body class="min-h-screen flex flex-col antialiased" data-mode="connect">
+<!-- TOP HEADER -->
+<header class="bg-white border-b border-slate-200/90 sticky top-0 z-30 px-6 py-3 flex items-center justify-between shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
+<div class="flex items-center space-x-3.5">
+<div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-blue-600 flex items-center justify-center text-white text-base shadow-sm ring-1 ring-indigo-500/20">🧮</div>
+<div>
+<h1 class="font-bold text-sm sm:text-base text-slate-900 tracking-tight leading-tight">SCHOLAR PATH - Academic Navigator &amp; Visual Mathematics Solver</h1>
+<p class="text-[11px] text-slate-500 font-medium">KaTeX Active • Real-Time 2D/3D Manifold Engine</p>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<div class="hidden md:flex items-center space-x-2 text-xs text-emerald-700 bg-emerald-50/80 px-3 py-1 rounded-full border border-emerald-200/80 font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="">Live LaTeX &amp; Analytics Ready</span>
+</div>
+<div class="flex items-center space-x-2.5 p-1 rounded-xl bg-slate-50/90 border border-slate-200 px-3 py-1.5">
+<div class="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-600 to-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">AY</div>
+<div class="text-left">
+<p class="text-xs font-bold text-slate-900 leading-none tracking-tight">Ansari Yasin</p>
+<p class="text-[10px] text-slate-500 mt-0.5 font-medium">B.Tech • Mathematics Focus</p>
+</div>
+</div>
+</div>
+</header>
+<div class="flex-1 flex overflow-hidden">
+<!-- SIDEBAR NAVIGATION (POLISHED MIDNIGHT SLATE AESTHETIC) -->
+<aside class="sidebar-dark w-64 flex flex-col justify-between shrink-0 hidden lg:flex z-20">
+<div class="p-4 space-y-6">
+<div>
+<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2.5">Primary Workspaces</p>
+<nav class="space-y-1" id="navContainer">
+<button class="nav-item w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left active" id="nav-dashboard" onclick="switchTab('dashboard')">
+<span class="text-sm">📊</span><span class="">Dashboard</span>
+</button>
+<button class="nav-item w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left" id="nav-solver" onclick="switchTab('solver')">
+<span class="text-sm font-serif">∑</span><span class="">Solve Mathematics</span>
+</button>
+<button class="nav-item w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left" id="nav-explorer" onclick="switchTab('explorer')">
+<span class="text-sm">🔮</span><span class="">Visualization Explorer (2D &amp; 3D)</span>
+</button>
+<button class="nav-item w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left" id="nav-diagnostic" onclick="switchTab('diagnostic')">
+<span class="text-sm">✓</span><span class="">Quick Diagnostic Test</span>
+</button>
+<button class="nav-item w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left" id="nav-simulator" onclick="switchTab('simulator')">
+<span class="text-sm">↗</span><span class="">Future Simulator</span>
+</button>
+<button class="nav-item w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left" id="nav-dna" onclick="switchTab('dna')">
+<span class="text-sm">🧬</span><span class="">Mistake DNA &amp; Causes</span>
+</button>
+<button class="nav-item w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left" id="nav-action" onclick="switchTab('action')">
+<span class="text-sm">🎯</span><span class="">Next Best Action</span>
+</button>
+</nav>
+</div>
+<div class="pt-4 border-t border-slate-800/80">
+<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2.5">Active Modules</p>
+<div class="flex flex-wrap gap-1.5 px-3">
+<span class="px-2.5 py-1 bg-slate-800/70 border border-slate-700/60 text-slate-300 rounded-md text-[11px] font-medium">Calculus</span>
+<span class="px-2.5 py-1 bg-slate-800/70 border border-slate-700/60 text-slate-300 rounded-md text-[11px] font-medium">DBMS</span>
+<span class="px-2.5 py-1 bg-slate-800/70 border border-slate-700/60 text-slate-300 rounded-md text-[11px] font-medium">Algebra</span>
+<span class="px-2.5 py-1 bg-slate-800/70 border border-slate-700/60 text-slate-300 rounded-md text-[11px] font-medium">Probability</span>
+</div>
+</div>
+</div>
+<div class="p-4 border-t border-slate-800/80 text-[11px] text-slate-400 bg-slate-950/40">
+<div class="flex items-center space-x-2">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<b class="text-slate-200 font-semibold">Ansari Yasin</b>
+<span class="text-slate-500">• Sem 4</span>
+</div>
+<div class="text-[10px] text-slate-500 mt-1 font-mono">Academic Navigator v2.5 Premium</div>
+</div>
+</aside>
+<!-- MAIN VIEWPORT -->
+<main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+<!-- =========================================================================
+         1. DASHBOARD VIEW
+         ========================================================================= -->
+<div class="page-view max-w-6xl mx-auto space-y-6 active" id="view-dashboard">
+<!-- HERO CARD (REFINED DEEP LUXURY GRADIENT) -->
+<div class="relative overflow-hidden rounded-2xl p-6 sm:p-8 text-white shadow-xl border border-white/10" style="background: linear-gradient(135deg, #090d16 0%, #151c2e 45%, #1e1b4b 85%, #172554 100%);">
+<div class="absolute -right-20 -top-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+<div class="space-y-2.5 max-w-2xl">
+<div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/15 text-indigo-200 rounded-full text-xs font-semibold border border-indigo-400/25 backdrop-blur-sm">
+<span class="">✨ AI Academic Navigator</span> • <span class="text-slate-300">Integrated Math Visualizer</span>
+</div>
+<h2 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">Your learning, decoded.</h2>
+<p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+            EduNav connects your test results, mistake patterns and step-by-step mathematical reasoning to pinpoint root causes — then gives you targeted actions.
+          </p>
+<div class="flex flex-wrap gap-2.5 pt-2">
+<button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-sm transition-all flex items-center gap-1.5" onclick="switchTab('solver')">
+<span class="font-serif">∑</span> Solve Math Problem
+            </button>
+<button class="px-4 py-2 bg-white/10 hover:bg-white/15 text-white text-xs sm:text-sm font-medium rounded-xl border border-white/15 transition-all flex items-center gap-1.5 backdrop-blur-sm" onclick="switchTab('diagnostic')">
+<span class="">✓</span> Quick Diagnostic Test
+            </button>
+<button class="px-4 py-2 bg-white/10 hover:bg-white/15 text-white text-xs sm:text-sm font-medium rounded-xl border border-white/15 transition-all flex items-center gap-1.5 backdrop-blur-sm" onclick="switchTab('explorer')">
+<span class="">🔮</span> Custom 2D/3D Explorer
+            </button>
+</div>
+</div>
+<div class="bg-white/[0.07] backdrop-blur-md rounded-2xl p-5 border border-white/15 text-center shrink-0 w-full md:w-auto shadow-inner">
+<div class="text-4xl font-extrabold text-white tracking-tight">76<span class="text-lg text-slate-400 font-normal">/100</span></div>
+<p class="text-xs text-slate-300 font-medium mt-1">Academic Health Score</p>
+<span class="inline-flex items-center gap-1.5 mt-2.5 text-[11px] px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-full font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Low Risk • Improving
+            </span>
+</div>
+</div>
+</div>
+<!-- 4 TOP STAT CARDS -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="premium-card p-5 transition-transform hover:-translate-y-0.5">
+<div class="flex justify-between items-center text-slate-400">
+<span class="micro-kicker">Academic Health</span><span class="text-rose-500 text-sm">❤️</span>
+</div>
+<div class="text-3xl font-extrabold text-slate-900 mt-2 tracking-tight">76<span class="text-base text-slate-400 font-normal">/100</span></div>
+<div class="text-xs text-emerald-600 font-semibold mt-1 flex items-center gap-1">↑ 8% this month</div>
+</div>
+<div class="premium-card p-5 transition-transform hover:-translate-y-0.5">
+<div class="flex justify-between items-center text-slate-400">
+<span class="micro-kicker">Current Average</span><span class="text-indigo-500 text-sm">◈</span>
+</div>
+<div class="text-3xl font-extrabold text-slate-900 mt-2 tracking-tight">72%</div>
+<div class="text-xs text-emerald-600 font-semibold mt-1 flex items-center gap-1">↑ 5% from last test</div>
+</div>
+<div class="premium-card p-5 transition-transform hover:-translate-y-0.5">
+<div class="flex justify-between items-center text-slate-400">
+<span class="micro-kicker">Syllabus Mastery</span><span class="text-blue-500 text-sm">◉</span>
+</div>
+<div class="text-3xl font-extrabold text-slate-900 mt-2 tracking-tight">61%</div>
+<div class="text-xs text-slate-500 font-medium mt-1">82% read • 61% mastered</div>
+</div>
+<div class="premium-card p-5 transition-transform hover:-translate-y-0.5">
+<div class="flex justify-between items-center text-slate-400">
+<span class="micro-kicker">Academic Risk</span><span class="text-amber-500 text-sm">⚠</span>
+</div>
+<div class="text-3xl font-extrabold text-amber-600 mt-2 tracking-tight">24<span class="text-base text-slate-400 font-normal">/100</span></div>
+<div class="text-xs text-emerald-600 font-semibold mt-1 flex items-center gap-1">Low risk • Safe buffer</div>
+</div>
+</div>
+<!-- PERFORMANCE TREND CHART & SUBJECT HEALTH -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="lg:col-span-2 premium-card p-6 space-y-3">
+<div class="flex justify-between items-center">
+<div>
+<h3 class="font-bold text-slate-900 text-base tracking-tight">Performance Trend</h3>
+<p class="text-xs text-slate-500 font-medium">Ansari Yasin's score progression across last 6 assessments</p>
+</div>
+<span class="text-xs px-2.5 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded-lg border border-indigo-200/80">+18 pts overall gain</span>
+</div>
+<div class="h-64 w-full pt-1">
+<canvas id="perfChart" width="728" height="315" style="display: block; box-sizing: border-box; height: 252px; width: 582.4px;"></canvas>
+</div>
+</div>
+<div class="premium-card p-6 space-y-4">
+<div class="flex justify-between items-center">
+<h3 class="font-bold text-slate-900 text-base tracking-tight">Subject Health</h3>
+<span class="micro-kicker">Mastery Level</span>
+</div>
+<div class="space-y-3.5 text-xs">
+<div>
+<div class="flex justify-between font-semibold mb-1">
+<span class="text-slate-700">Java Programming</span><span class="text-slate-900 font-bold">82%</span>
+</div>
+<div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+<div class="bg-emerald-500 h-2 rounded-full" style="width: 82%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-semibold mb-1">
+<span class="text-slate-700">DBMS</span><span class="text-amber-600 font-bold">54%</span>
+</div>
+<div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+<div class="bg-amber-500 h-2 rounded-full" style="width: 54%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-semibold mb-1">
+<span class="text-slate-700">Applied Mathematics</span><span class="text-rose-600 font-bold">38% (Root Weakness)</span>
+</div>
+<div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+<div class="bg-rose-500 h-2 rounded-full" style="width: 38%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-semibold mb-1">
+<span class="text-slate-700">Computer Networks</span><span class="text-slate-900 font-bold">67%</span>
+</div>
+<div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+<div class="bg-blue-600 h-2 rounded-full" style="width: 67%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-semibold mb-1">
+<span class="text-slate-700">Data Structures</span><span class="text-slate-900 font-bold">74%</span>
+</div>
+<div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+<div class="bg-indigo-600 h-2 rounded-full" style="width: 74%"></div>
+</div>
+</div>
+</div>
+<button class="w-full py-2 bg-slate-50 hover:bg-slate-100 text-indigo-600 font-semibold rounded-xl text-xs text-center border border-slate-200 transition-colors block" onclick="switchTab('solver')">
+            Solve Calculus &amp; Math Problems →
+          </button>
+</div>
+</div>
+<!-- BOTTOM 3 CARDS -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+<div class="premium-card p-5 space-y-3">
+<h3 class="font-bold text-slate-900 text-sm flex items-center gap-1.5 tracking-tight">
+<span class="">🔍</span><span class="">Why are you weak? (Root Causes)</span>
+</h3>
+<div class="p-3 bg-indigo-50/60 rounded-xl border-l-4 border-indigo-600 text-xs border border-indigo-100/60">
+<b class="text-slate-900">DBMS → Normalization</b>
+<p class="text-slate-600 mt-1 leading-relaxed">Root cause: Functional Dependency is only 41% mastered.</p>
+</div>
+<div class="p-3 bg-indigo-50/60 rounded-xl border-l-4 border-indigo-600 text-xs border border-indigo-100/60">
+<b class="text-slate-900">Maths → Calculus / Probability</b>
+<p class="text-slate-600 mt-1 leading-relaxed">Root cause: Formula recall drops without interactive step-by-step proofs.</p>
+</div>
+</div>
+<div class="premium-card p-5 space-y-3">
+<h3 class="font-bold text-slate-900 text-sm flex items-center gap-1.5 tracking-tight">
+<span class="">🧬</span><span class="">Your Mistake DNA</span>
+</h3>
+<div class="space-y-2.5 text-xs">
+<div>
+<div class="flex justify-between text-[11px] mb-1 font-medium"><span class="text-slate-600">Concept gap</span><b class="text-slate-900">35%</b></div>
+<div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-600 rounded-full" style="width: 35%"></div></div>
+</div>
+<div>
+<div class="flex justify-between text-[11px] mb-1 font-medium"><span class="text-slate-600">Forgot formula</span><b class="text-slate-900">25%</b></div>
+<div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-600 rounded-full" style="width: 25%"></div></div>
+</div>
+<div>
+<div class="flex justify-between text-[11px] mb-1 font-medium"><span class="text-slate-600">Misread question</span><b class="text-slate-900">20%</b></div>
+<div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-600 rounded-full" style="width: 20%"></div></div>
+</div>
+</div>
+<button class="text-indigo-600 text-xs font-semibold hover:text-indigo-700 hover:underline pt-1 inline-block" onclick="switchTab('dna')">View full Mistake DNA →</button>
+</div>
+<div class="premium-card p-5 space-y-3 flex flex-col justify-between">
+<div>
+<h3 class="font-bold text-slate-900 text-sm flex items-center gap-1.5 tracking-tight">
+<span class="">🎯</span><span class="">Today's Action</span>
+</h3>
+<div class="space-y-2.5 mt-2.5 text-xs">
+<div class="flex items-start gap-2.5">
+<span class="w-5 h-5 rounded-lg bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center shrink-0 border border-indigo-200/80">1</span>
+<div><b class="text-slate-900">Revise Functional Dependency</b><p class="text-slate-500">15 min • Highest impact</p></div>
+</div>
+<div class="flex items-start gap-2.5">
+<span class="w-5 h-5 rounded-lg bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center shrink-0 border border-indigo-200/80">2</span>
+<div><b class="text-slate-900">Solve Polynomial Derivatives</b><p class="text-slate-500">20 min • Apply the power rule</p></div>
+</div>
+</div>
+</div>
+<button class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-xs transition-colors" onclick="switchTab('action')">
+            View Full Action Plan →
+          </button>
+</div>
+</div>
+</div>
+<!-- =========================================================================
+         2. VISUALIZATION EXPLORER (ENHANCED WITH PROMINENT INTERACTIVE FORMULA BAR & 2D/3D ENGINE)
+         ========================================================================= -->
+<div class="page-view max-w-7xl mx-auto space-y-6" id="view-explorer">
+<!-- ===== HEADER ===== -->
+<div class="flex items-center justify-between">
+  <div>
+    <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">🔮 3D Visualiser</h2>
+    <p class="text-xs text-slate-500 font-medium mt-0.5">Turn mathematical equations into interactive visuals</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200 font-semibold">
+      <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>Plotly Engine Active
+    </span>
+  </div>
+</div>
+
+<!-- ===== MAIN SPLIT LAYOUT ===== -->
+<div class="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 items-start">
+
+  <!-- ===== LEFT PANEL: INPUTS ===== -->
+  <div class="space-y-4">
+
+    <!-- Equation Input Card -->
+    <div class="premium-card p-5 space-y-4">
+      <div>
+        <h3 class="text-sm font-bold text-slate-900 mb-0.5">Visualise your equation</h3>
+        <p class="text-[11px] text-slate-500">Enter a mathematical expression to render as an interactive graph.</p>
+      </div>
+
+      <!-- Equation input -->
+      <div class="space-y-1.5">
+        <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Enter your equation</label>
+        <div class="relative">
+          <input
+            id="vis3d-eq-input"
+            type="text"
+            class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none text-sm font-mono text-slate-900 bg-white shadow-xs transition-all"
+            placeholder="e.g. sin(x) * cos(y)"
+            value="sin(x) * cos(y)"
+            autocomplete="off" spellcheck="false"
+            oninput="vis3d_onEquationInput()"
+          />
+          <button class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 text-sm transition-colors" onclick="document.getElementById('vis3d-eq-input').value=''; document.getElementById('vis3d-eq-input').focus()">✕</button>
+        </div>
+        <div id="vis3d-eq-error" class="hidden text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 flex items-center gap-1.5">
+          <span>⚠️</span><span id="vis3d-eq-error-msg"></span>
+        </div>
+      </div>
+
+      <!-- Variable descriptions -->
+      <div class="space-y-1.5">
+        <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Describe variables &amp; constants <span class="text-slate-400 font-normal normal-case">(optional)</span></label>
+        <textarea
+          id="vis3d-desc-input"
+          rows="4"
+          class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none text-xs font-mono text-slate-700 bg-white resize-none shadow-xs transition-all"
+          placeholder="Example:
+A = amplitude
+B = x frequency
+C = y frequency
+x = horizontal axis
+y = vertical axis"></textarea>
+      </div>
+
+      <!-- Visualization selector -->
+      <div class="space-y-1.5">
+        <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Visualization type</label>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="vis-selector-card p-3 text-center selected" id="vis-card-3d" onclick="vis3d_selectDim('3d')">
+            <div class="text-xl mb-1">🌐</div>
+            <div class="text-xs font-bold text-slate-800">3D Surface</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Interactive Manifold</div>
+          </div>
+          <div class="vis-selector-card p-3 text-center" id="vis-card-2d" onclick="vis3d_selectDim('2d')">
+            <div class="text-xl mb-1">📈</div>
+            <div class="text-xs font-bold text-slate-800">2D Curve</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Line / Function Plot</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Range controls -->
+      <div class="space-y-2">
+        <label class="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Graph range</label>
+        <div class="grid grid-cols-2 gap-2" id="vis3d-range-controls">
+          <div>
+            <label class="text-[10px] text-slate-500 font-medium">X min</label>
+            <input type="number" id="vis3d-xmin" value="-5" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-500 font-medium">X max</label>
+            <input type="number" id="vis3d-xmax" value="5" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+          </div>
+          <div id="vis3d-yrange-row">
+            <label class="text-[10px] text-slate-500 font-medium">Y min</label>
+            <input type="number" id="vis3d-ymin" value="-5" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+          </div>
+          <div id="vis3d-yrange-row2">
+            <label class="text-[10px] text-slate-500 font-medium">Y max</label>
+            <input type="number" id="vis3d-ymax" value="5" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+          </div>
+        </div>
+      </div>
+
+      <!-- Generate button -->
+      <button
+        id="vis3d-generate-btn"
+        onclick="vis3d_generate()"
+        class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl text-sm shadow-md transition-all flex items-center justify-center gap-2"
+      >
+        <span id="vis3d-btn-icon">✨</span>
+        <span id="vis3d-btn-text">Generate Visualisation</span>
+      </button>
+
+      <!-- Status message -->
+      <div id="vis3d-status" class="hidden text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 flex items-center gap-1.5">
+        <span>✓</span><span id="vis3d-status-msg"></span>
+      </div>
+    </div>
+
+    <!-- Example equations -->
+    <div class="premium-card p-4 space-y-2.5">
+      <h4 class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Example Equations</h4>
+      <div class="flex flex-wrap gap-1.5">
+        <button class="eq-chip" onclick="vis3d_loadPreset('parabola')">📐 Parabola</button>
+        <button class="eq-chip" onclick="vis3d_loadPreset('sine')">〜 Sine Wave</button>
+        <button class="eq-chip" onclick="vis3d_loadPreset('saddle')">🏔️ Saddle</button>
+        <button class="eq-chip" onclick="vis3d_loadPreset('ripple')">🎯 Ripple</button>
+        <button class="eq-chip" onclick="vis3d_loadPreset('gaussian')">🔔 Bell</button>
+        <button class="eq-chip" onclick="vis3d_loadPreset('eggcrate')">🥚 Egg-Crate</button>
+        <button class="eq-chip" onclick="vis3d_loadPreset('wave3d')">🌊 3D Wave</button>
+        <button class="eq-chip" onclick="vis3d_loadPreset('cubic')">📈 Cubic</button>
+      </div>
+      <div class="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-[11px] text-amber-800 leading-relaxed">
+        <b>Why visualise?</b> 3D surfaces make functions, coordinate systems and parameter changes far easier to understand visually.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== RIGHT PANEL: VISUALIZATION ===== -->
+  <div class="space-y-4">
+
+    <!-- Visualization canvas card -->
+    <div class="premium-card overflow-hidden">
+      <div class="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-100">
+        <div>
+          <h3 id="vis3d-chart-title" class="text-sm font-bold text-slate-900">Interactive Visualization</h3>
+          <p id="vis3d-chart-sub" class="text-[11px] text-slate-500 mt-0.5">Generate a visualization to see it here</p>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="vis3d_resetCamera()" title="Reset camera" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg text-xs transition-colors">⟳</button>
+          <div id="vis3d-latex-badge" class="hidden text-[10px] font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200"></div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="vis3d-empty-state" class="empty-grid-bg flex flex-col items-center justify-center py-20 px-6 text-center">
+        <div class="text-5xl mb-4 opacity-30">📊</div>
+        <p class="text-slate-500 font-semibold text-sm">Your visualization will appear here</p>
+        <p class="text-slate-400 text-xs mt-1 max-w-xs">Enter an equation and let the engine render an interactive mathematical visual.</p>
+        <div class="mt-4 flex flex-wrap justify-center gap-2">
+          <span class="text-[10px] text-slate-400 bg-white border border-slate-200 px-2 py-1 rounded-md font-mono">sin(x)·cos(y)</span>
+          <span class="text-[10px] text-slate-400 bg-white border border-slate-200 px-2 py-1 rounded-md font-mono">x² + y²</span>
+          <span class="text-[10px] text-slate-400 bg-white border border-slate-200 px-2 py-1 rounded-md font-mono">e^(-r²)</span>
+        </div>
+      </div>
+
+      <!-- 3D Plotly container -->
+      <div id="vis3d-plotly-wrap" class="hidden px-2 pb-2">
+        <div id="vis3d-plotly" style="height:480px; width:100%"></div>
+      </div>
+      <!-- 2D Chart container -->
+      <div id="vis3d-chart2d-wrap" class="hidden px-4 pb-4">
+        <div class="relative h-80">
+          <canvas id="vis3d-canvas2d"></canvas>
+        </div>
+      </div>
+
+      <!-- Legend strip -->
+      <div id="vis3d-legend" class="hidden grid grid-cols-3 border-t border-slate-100">
+        <div class="px-4 py-3">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">X / Y</p>
+          <p class="text-[11px] text-slate-600 mt-0.5">Location on the horizontal plane</p>
+        </div>
+        <div class="px-4 py-3 border-l border-slate-100">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide" id="vis3d-legend-z-label">Z</p>
+          <p class="text-[11px] text-slate-600 mt-0.5" id="vis3d-legend-z-desc">Height calculated by the formula</p>
+        </div>
+        <div class="px-4 py-3 border-l border-slate-100">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Interactive</p>
+          <p class="text-[11px] text-slate-600 mt-0.5">Rotate, zoom and inspect</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Explanation (shown after generation) -->
+    <div id="vis3d-ai-card" class="hidden premium-card p-5 space-y-4">
+      <div class="flex items-center gap-2">
+        <span class="text-base">🤖</span>
+        <h3 class="text-sm font-bold text-slate-900">What you're seeing</h3>
+        <span class="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200 font-semibold">AI Explanation</span>
+      </div>
+      <p id="vis3d-ai-desc" class="text-xs text-slate-600 leading-relaxed"></p>
+      <div id="vis3d-ai-params" class="space-y-1"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== PARAMETER SLIDERS (below, full width) ===== -->
+<div id="vis3d-sliders-card" class="hidden premium-card p-5">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h3 class="text-sm font-bold text-slate-900">Interactive Parameters</h3>
+      <p class="text-[11px] text-slate-500 mt-0.5">Drag sliders to update the visualization in real time</p>
+    </div>
+    <button onclick="vis3d_resetSliders()" class="text-xs text-slate-500 hover:text-indigo-600 font-semibold transition-colors">↺ Reset</button>
+  </div>
+  <div id="vis3d-sliders-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8"></div>
+</div></div>
+
+
+<!-- =========================================================================
+         3. AI MATHEMATICS SOLVER VIEW (WITH FLAWLESS KATEX FORMATTING)
+         ========================================================================= -->
+<div class="page-view w-full max-w-full mx-auto space-y-8 px-0 sm:px-2 lg:px-4" id="view-solver">
+  <!-- Header Banner -->
+  <div class="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 p-6 sm:p-8 rounded-3xl text-white shadow-xl border border-indigo-500/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+      <div class="inline-flex items-center space-x-2 bg-indigo-500/20 text-indigo-300 px-3.5 py-1 rounded-full text-xs font-semibold mb-3 border border-indigo-400/30 backdrop-blur-sm">
+        <span>✨ Human Reasoning AI</span> • <span>LaTeX &amp; KaTeX Proof Engine</span>
+      </div>
+      <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight text-white">AI Mathematics Visual Solver</h2>
+      <p class="text-slate-300 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">Solve calculus, integration, quadratic, multivariable, or linear algebra problems with step-by-step human explanations and instant 2D/3D visualization.</p>
+    </div>
+    <div class="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-2xl border border-white/10 backdrop-blur-sm text-xs font-medium text-slate-200">
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span>Engine Active: SymPy &amp; Gemini 3.5</span>
+    </div>
+  </div>
+
+  <!-- INPUT BOX CARD (FULLER LENGTH SYSTEMATIC) -->
+  <div class="space-y-3">
+    <div class="text-xs font-mono text-slate-600 font-medium">Enter any mathematics problem:</div>
+    <div id="solverInputProblemDisplay" class="font-mono text-sm text-slate-800 hidden bg-slate-100 p-2.5 rounded-xl border border-slate-200"></div>
+    <div id="solverStatusIndicator" class="text-xs font-semibold text-indigo-600 hidden flex items-center gap-1.5">
+      <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+      <span>🤖 AI is solving your problem...</span>
+    </div>
+
+    <div class="premium-card p-6 sm:p-8 space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <label class="micro-kicker text-slate-800 text-xs flex items-center gap-2 font-bold">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+          Enter Any Mathematics Problem:
+        </label>
+        <div class="flex flex-wrap gap-2 text-xs">
+          <button class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-lg font-mono text-xs font-medium transition-all border border-slate-200" onclick="setSolverInput('Differentiate y = 3x^4 - 5x^3 + 2x^2 - 7x + 4')">d/dx Derivative</button>
+          <button class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-lg font-mono text-xs font-medium transition-all border border-slate-200" onclick="setSolverInput('Find \\int (4x^3 + 6x - 5) dx')">∫ Integral</button>
+          <button class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-lg font-mono text-xs font-medium transition-all border border-slate-200" onclick="setSolverInput('Solve 2x^2 - 8x + 6 = 0')">Quadratic</button>
+          <button class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-lg font-mono text-xs font-medium transition-all border border-slate-200" onclick="setSolverInput('z = x^2 + y^2')">3D Surface</button>
+          <button class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-lg font-mono text-xs font-medium transition-all border border-slate-200" onclick="setSolverInput('Evaluate 3x + 5y - 2x + y')">Algebra</button>
+        </div>
+      </div>
+
+      <textarea class="w-full p-5 rounded-2xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none text-base sm:text-lg text-slate-900 font-mono shadow-inner bg-slate-50/50 transition-all" id="solverInputArea" rows="3" placeholder="Type any math problem e.g. Differentiate y = 3x^4 - 5x^3 + 2x^2 - 7x + 4">Differentiate y = 3x^4 - 5x^3 + 2x^2 - 7x + 4</textarea>
+
+      <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-2 border-t border-slate-100">
+        <div class="flex items-center gap-3">
+          <button class="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl shadow-md text-sm flex items-center justify-center gap-2 transition-all shrink-0" onclick="triggerSolveEquation()">
+            <span>✨ Solve Problem</span>
+          </button>
+          <button class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm rounded-xl font-semibold transition-all flex items-center justify-center gap-1.5" onclick="setRandomSolverEquation()">
+            <span>🎲 Random Formula</span>
+          </button>
+        </div>
+        <div class="flex items-center gap-3 text-xs text-slate-500 font-medium self-end sm:self-auto">
+          <span id="sympyVerifBadge" class="hidden"></span>
+          <span>Student: <b class="text-slate-800">Ansari Yasin</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DYNAMIC SOLUTION OUTPUT AREA -->
+  <div id="solverOutputArea" class="w-full space-y-6"></div>
+</div>
+<!-- =========================================================================
+         4. QUICK DIAGNOSTIC TEST
+         ========================================================================= -->
+<div class="page-view max-w-3xl mx-auto space-y-6" id="view-diagnostic">
+<div class="premium-card p-6 space-y-5">
+<div class="flex justify-between items-center">
+<div>
+<h2 class="text-xl font-bold text-slate-900 tracking-tight">Quick Diagnostic Test</h2>
+<p class="text-xs text-slate-500 font-medium mt-0.5">Selected to assess fundamental concepts across Calculus, DBMS and Networks.</p>
+</div>
+<span class="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-200/80" id="diagQNum">Question 1 of 5</span>
+</div>
+<div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+<p class="text-base font-bold text-slate-900" id="diagQuestionText">Which normal form removes partial dependency from a relation?</p>
+</div>
+<div class="space-y-2" id="diagOptionsBox"><button class="w-full text-left p-3 rounded-xl border text-xs font-medium transition-colors border-slate-200 bg-white hover:bg-slate-50 text-slate-800">1NF</button><button class="w-full text-left p-3 rounded-xl border text-xs font-medium transition-colors border-slate-200 bg-white hover:bg-slate-50 text-slate-800">2NF</button><button class="w-full text-left p-3 rounded-xl border text-xs font-medium transition-colors border-slate-200 bg-white hover:bg-slate-50 text-slate-800">3NF</button><button class="w-full text-left p-3 rounded-xl border text-xs font-medium transition-colors border-slate-200 bg-white hover:bg-slate-50 text-slate-800">BCNF</button></div>
+<div class="flex justify-between items-center pt-3 border-t border-slate-200">
+<button class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors" onclick="prevQ()">← Previous</button>
+<button class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors" id="diagNextBtn" onclick="nextQ()">Next →</button>
+</div>
+<div class="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
+<b>Why this test?</b> We use your answers and response pattern to update your Digital Twin and Mistake DNA.
+        </div>
+</div>
+</div>
+<!-- =========================================================================
+         5. FUTURE SIMULATOR
+         ========================================================================= -->
+<div class="page-view max-w-4xl mx-auto space-y-6" id="view-simulator">
+<div class="premium-card p-6 space-y-6">
+<div>
+<h2 class="text-2xl font-bold text-slate-900 tracking-tight">🔮 Future Performance Simulator</h2>
+<p class="text-xs text-slate-500 font-medium mt-0.5">Explore “what-if” scenarios before changing your study routine.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+<div class="space-y-4 bg-slate-50 p-5 rounded-xl border border-slate-200">
+<div>
+<div class="flex justify-between text-xs font-bold text-slate-700 mb-1">
+<span class="">Daily study time:</span><span class="text-indigo-600 font-mono" id="hoursOut">2.0 hrs</span>
+</div>
+<input class="ref-slider w-full accent-indigo-600" id="simHours" max="5" min="0.5" oninput="runSim()" step="0.5" type="range" value="2">
+</div>
+<div>
+<div class="flex justify-between text-xs font-bold text-slate-700 mb-1">
+<span class="">Focus on weak topics:</span><span class="text-indigo-600 font-mono" id="focusOut">50%</span>
+</div>
+<input class="ref-slider w-full accent-indigo-600" id="simFocus" max="100" min="0" oninput="runSim()" step="10" type="range" value="50">
+</div>
+<div>
+<div class="flex justify-between text-xs font-bold text-slate-700 mb-1">
+<span class="">Exam preparation days:</span><span class="text-indigo-600 font-mono" id="daysOut">20 days</span>
+</div>
+<input class="ref-slider w-full accent-indigo-600" id="simDays" max="60" min="7" oninput="runSim()" step="1" type="range" value="20">
+</div>
+</div>
+<div class="rounded-2xl p-6 shadow-lg space-y-4 text-white border border-white/10" style="background: linear-gradient(135deg, #090d16 0%, #151c2e 50%, #1e1b4b 100%);">
+<span class="micro-kicker text-indigo-300">Estimated Exam Performance</span>
+<div class="text-5xl font-extrabold text-white tracking-tight" id="simPred">74–79%</div>
+<p class="text-xs text-slate-300 font-medium">Based on Ansari Yasin's current academic profile and retention rates</p>
+<div class="pt-3 border-t border-slate-800 text-xs space-y-2 font-medium">
+<div class="flex justify-between"><span class="">Study Consistency</span><b class="text-emerald-400" id="simCons">Good</b></div>
+<div class="flex justify-between"><span class="">Academic Risk</span><b class="text-indigo-300" id="simRisk">24/100</b></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- =========================================================================
+         6. MISTAKE DNA & ROOT CAUSES
+         ========================================================================= -->
+<div class="page-view max-w-5xl mx-auto space-y-6" id="view-dna">
+<div class="premium-card p-6 space-y-6">
+<div>
+<h2 class="text-2xl font-bold text-slate-900 tracking-tight">🧬 Mistake DNA &amp; Root Cause Finder</h2>
+<p class="text-xs text-slate-500 font-medium mt-0.5">Understand the cognitive pattern behind your wrong answers.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-3">
+<h3 class="font-bold text-slate-800 text-sm tracking-tight">Mistake DNA Distribution</h3>
+<div class="space-y-3 text-xs">
+<div>
+<div class="flex justify-between font-semibold mb-1"><span class="text-slate-600">Concept gap</span><b class="text-slate-900">35%</b></div>
+<div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-600 rounded-full" style="width: 35%"></div></div>
+</div>
+<div>
+<div class="flex justify-between font-semibold mb-1"><span class="text-slate-600">Forgot formula</span><b class="text-slate-900">25%</b></div>
+<div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-600 rounded-full" style="width: 25%"></div></div>
+</div>
+<div>
+<div class="flex justify-between font-semibold mb-1"><span class="text-slate-600">Misread question</span><b class="text-slate-900">20%</b></div>
+<div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-600 rounded-full" style="width: 20%"></div></div>
+</div>
+<div>
+<div class="flex justify-between font-semibold mb-1"><span class="text-slate-600">Calculation error</span><b class="text-slate-900">15%</b></div>
+<div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-600 rounded-full" style="width: 15%"></div></div>
+</div>
+<div>
+<div class="flex justify-between font-semibold mb-1"><span class="text-slate-600">Time pressure</span><b class="text-slate-900">5%</b></div>
+<div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-600 rounded-full" style="width: 5%"></div></div>
+</div>
+</div>
+</div>
+<div class="space-y-3">
+<h3 class="font-bold text-slate-800 text-sm tracking-tight">Root Cause Diagnostics</h3>
+<div class="p-3.5 rounded-xl bg-indigo-50/50 border-l-4 border-indigo-600 text-xs border border-indigo-100">
+<b class="text-slate-900">DBMS → Normalization <span class="ml-2 px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded text-[10px] font-semibold">Priority</span></b>
+<p class="text-slate-600 mt-1 leading-relaxed">You answered 4/7 normalization questions incorrectly. 3 of those connect to Functional Dependency (41% mastery).</p>
+</div>
+<div class="p-3.5 rounded-xl bg-indigo-50/50 border-l-4 border-indigo-600 text-xs border border-indigo-100">
+<b class="text-slate-900">Maths → Probability &amp; Calculus</b>
+<p class="text-slate-600 mt-1 leading-relaxed">Accuracy falls from 76% to 49% when questions require formula recall without step hints.</p>
+</div>
+<div class="p-3.5 rounded-xl bg-indigo-50/50 border-l-4 border-indigo-600 text-xs border border-indigo-100">
+<b class="text-slate-900">Networks → TCP/UDP</b>
+<p class="text-slate-600 mt-1 leading-relaxed">You know definitions but confuse reliability and speed when applying concepts to scenarios.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- =========================================================================
+         7. NEXT BEST ACADEMIC ACTION
+         ========================================================================= -->
+<div class="page-view max-w-5xl mx-auto space-y-6" id="view-action">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="lg:col-span-2 premium-card p-6 space-y-4">
+<div class="micro-kicker text-indigo-600 font-bold">Highest Impact Action • 45 Minutes</div>
+<h2 class="text-2xl font-bold text-slate-900 tracking-tight">Fix Functional Dependency &amp; Derivative Rules</h2>
+<p class="text-xs text-slate-600 leading-relaxed font-medium">
+            Your recent errors show that prerequisite gaps cause repeated mistakes. Fixing this foundation will improve your academic score more than starting a new chapter.
+          </p>
+<div class="space-y-3 pt-2 text-xs">
+<div class="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+<span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center shrink-0 border border-indigo-200/80">1</span>
+<div><b class="text-slate-900">Learn the Core Idea — 15 min</b><p class="text-slate-500 mt-0.5">Review functional dependency and the power rule with 3 simple examples.</p></div>
+</div>
+<div class="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+<span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center shrink-0 border border-indigo-200/80">2</span>
+<div><b class="text-slate-900">Practice 5 Questions — 20 min</b><p class="text-slate-500 mt-0.5">Solve 5 polynomial and normalization problems in the solver.</p></div>
+</div>
+<div class="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+<span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center shrink-0 border border-indigo-200/80">3</span>
+<div><b class="text-slate-900">Reattempt Mistakes — 10 min</b><p class="text-slate-500 mt-0.5">Retry previously incorrect questions without looking at the answer keys.</p></div>
+</div>
+</div>
+<button class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-sm transition-colors" onclick="alert('Session started! 45-minute focused review active.')">
+            ▶ Start 45-Minute Session
+          </button>
+</div>
+<div class="premium-card p-6 space-y-3">
+<h3 class="font-bold text-slate-900 text-sm tracking-tight">Expected Academic Impact</h3>
+<div class="space-y-2 text-xs divide-y divide-slate-100 font-medium">
+<div class="flex justify-between py-1.5"><span class="text-slate-600">DBMS Mastery</span><b class="text-emerald-600">+8–12%</b></div>
+<div class="flex justify-between py-1.5"><span class="text-slate-600">Calculus Confidence</span><b class="text-emerald-600">+15%</b></div>
+<div class="flex justify-between py-1.5"><span class="text-slate-600">Academic Risk</span><b class="text-indigo-600">-6 pts</b></div>
+<div class="flex justify-between py-1.5"><span class="text-slate-600">Est. Score Range</span><b class="text-emerald-600">+4–7 pts</b></div>
+</div>
+<div class="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-xs text-amber-900 mt-4 leading-relaxed">
+<b>Why this action?</b> Connects 3 repeated mistakes to 1 missing prerequisite. That's why it ranks above general revision.
+          </div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<script>
+/* =========================================================================
+   ROBUST KATEX RENDERING HELPER
+   ========================================================================= */
+function renderAllMath(targetElement) {
+  const elem = targetElement || document.body;
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(elem, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+        { left: '\\[', right: '\\]', display: true },
+        { left: '\\(', right: '\\)', display: false }
+      ],
+      throwOnError: false,
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code", "option", "input"]
+    });
+  }
+}
+
+/* =========================================================================
+   ROUTING & TAB SWITCHER
+   ========================================================================= */
+function switchTab(viewId) {
+  document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  
+  const target = document.getElementById('view-' + viewId);
+  if (target) target.classList.add('active');
+  
+  const navBtn = document.getElementById('nav-' + viewId);
+  if (navBtn) navBtn.classList.add('active');
+
+  // Trigger KaTeX parsing on the newly activated section
+  setTimeout(() => {
+    if (target) renderAllMath(target);
+  }, 30);
+
+  if (viewId === 'explorer') {
+    setTimeout(() => {
+      if (currentVisDimension === '3d') {
+        render3DPlotly();
+      } else {
+        render2DChart();
+      }
+    }, 60);
+  }
+}
+
+/* =========================================================================
+   DASHBOARD PERFORMANCE TREND CHART
+   ========================================================================= */
+let perfChartInstance = null;
+function initPerfChart() {
+  const canvas = document.getElementById('perfChart');
+  if (!canvas) return;
+  if (perfChartInstance) perfChartInstance.destroy();
+  perfChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: ['Test 1', 'Test 2', 'Test 3', 'Test 4', 'Test 5', 'Test 6'],
+      datasets: [{
+        label: 'Ansari Yasin Score (%)',
+        data: [54, 59, 61, 66, 67, 72],
+        borderColor: '#4f46e5',
+        backgroundColor: 'rgba(79, 70, 229, 0.08)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 4,
+        pointBackgroundColor: '#4f46e5',
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          grid: { color: 'rgba(226, 232, 240, 0.6)' },
+          ticks: { font: { family: 'Inter, system-ui', size: 11, weight: '500' }, color: '#64748b' }
+        },
+        y: { 
+          min: 40, 
+          max: 100, 
+          grid: { color: 'rgba(226, 232, 240, 0.6)' },
+          ticks: { callback: v => v + '%', font: { family: 'Inter, system-ui', size: 11, weight: '500' }, color: '#64748b' } 
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+/* =========================================================================
+   INTEGRATED 2D & 3D VISUALIZATION ENGINE WITH LIVE FORMULA PARSER & KATEX
+   ========================================================================= */
+/* =========================================================================
+   3D VISUALISER ENGINE — COMPLETE REBUILD
+   ========================================================================= */
+
+// ---- State ----
+const Vis3D = {
+  dimension: '3d',
+  equation: 'sin(x) * cos(y)',
+  compiled: null,
+  constants: {},   // { A: { value: 2, description: 'amplitude' }, ... }
+  chartInstance: null,
+  generated: false,
+};
+
+// ---- Equation Presets ----
+const VIS_PRESETS = {
+  parabola:  { dim: '2d', eq: 'x^2',                      desc: 'x = horizontal axis\ny = height (x squared)', constants: {} },
+  sine:      { dim: '2d', eq: 'A * sin(B * x)',            desc: 'A = amplitude\nB = frequency\nx = horizontal axis', constants: { A: { value: 1.5, description: 'amplitude' }, B: { value: 2, description: 'frequency' } } },
+  cubic:     { dim: '2d', eq: 'x^3 - A * x + B',          desc: 'A = coefficient\nB = vertical offset\nx = horizontal axis', constants: { A: { value: 4, description: 'cubic coeff' }, B: { value: 2, description: 'vertical shift' } } },
+  saddle:    { dim: '3d', eq: 'x^2 - y^2',                desc: 'x = horizontal\ny = depth\nz = surface height', constants: {} },
+  ripple:    { dim: '3d', eq: 'A * sin(B * sqrt(x^2 + y^2)) / (sqrt(x^2 + y^2) + 0.1)', desc: 'A = amplitude\nB = frequency\nx, y = plane coordinates', constants: { A: { value: 2.5, description: 'amplitude' }, B: { value: 2, description: 'radial frequency' } } },
+  gaussian:  { dim: '3d', eq: 'A * exp(-B * (x^2 + y^2))', desc: 'A = peak height\nB = spread (narrower = higher)\nx, y = plane axes', constants: { A: { value: 3, description: 'peak height' }, B: { value: 0.3, description: 'spread factor' } } },
+  eggcrate:  { dim: '3d', eq: 'A * cos(x) * cos(B * y)',   desc: 'A = amplitude\nB = y frequency\nx, y = plane coordinates', constants: { A: { value: 2, description: 'amplitude' }, B: { value: 1.5, description: 'y frequency' } } },
+  wave3d:    { dim: '3d', eq: 'A * sin(x) * cos(B * y)',   desc: 'A = wave height\nB = y frequency\nx, y = plane coordinates', constants: { A: { value: 3, description: 'wave height' }, B: { value: 5, description: 'y frequency' } } },
+};
+
+// ---- Load preset ----
+function vis3d_loadPreset(key) {
+  const p = VIS_PRESETS[key];
+  if (!p) return;
+  document.getElementById('vis3d-eq-input').value = p.eq;
+  document.getElementById('vis3d-desc-input').value = p.desc;
+  vis3d_selectDim(p.dim);
+  Vis3D.constants = JSON.parse(JSON.stringify(p.constants));
+  vis3d_generate();
+}
+
+// ---- Dimension selector ----
+function vis3d_selectDim(dim) {
+  Vis3D.dimension = dim;
+  const c3 = document.getElementById('vis-card-3d');
+  const c2 = document.getElementById('vis-card-2d');
+  const yr1 = document.getElementById('vis3d-yrange-row');
+  const yr2 = document.getElementById('vis3d-yrange-row2');
+  if (dim === '3d') {
+    c3.classList.add('selected'); c2.classList.remove('selected');
+    yr1.style.display = ''; yr2.style.display = '';
+  } else {
+    c2.classList.add('selected'); c3.classList.remove('selected');
+    yr1.style.display = 'none'; yr2.style.display = 'none';
+  }
+}
+
+// ---- Input change: clear error ----
+function vis3d_onEquationInput() {
+  document.getElementById('vis3d-eq-error').classList.add('hidden');
+  document.getElementById('vis3d-status').classList.add('hidden');
+}
+
+// ---- Parse variable descriptions from textarea ----
+function vis3d_parseDescriptions(descText) {
+  const result = {};
+  (descText || '').split('\n').forEach(line => {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)\s*$/);
+    if (m) result[m[1]] = m[2].trim();
+  });
+  return result;
+}
+
+// ---- Parse constants from an equation (uppercase single letters excluding x, y, z, e) ----
+function vis3d_detectConstants(expr) {
+  const reserved = new Set(['x', 'y', 'z', 'e', 'pi', 'sin', 'cos', 'tan', 'exp', 'sqrt', 'log', 'abs']);
+  const matches = new Set();
+  const tokens = expr.match(/[A-Za-z]+/g) || [];
+  tokens.forEach(t => {
+    if (t.length === 1 && !reserved.has(t.toLowerCase()) && t !== t.toLowerCase()) {
+      matches.add(t);
+    } else if (t.length >= 2 && /^[A-Z]/.test(t) && !['Math', 'PI'].includes(t)) {
+      matches.add(t);
+    }
+  });
+  return [...matches];
+}
+
+// ---- Compile math expression safely using math.js ----
+function vis3d_compile(exprRaw, varNames) {
+  try {
+    // Strip LHS: z =, y =, f(x) =
+    let expr = exprRaw.replace(/^\s*(?:z|y|f\([^)]*\))\s*=\s*/i, '').trim();
+    const compiled = math.compile(expr);
+    return (scope) => {
+      try {
+        const r = compiled.evaluate(scope);
+        return typeof r === 'number' && Number.isFinite(r) ? r : NaN;
+      } catch { return NaN; }
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---- Show inline error ----
+function vis3d_showError(msg) {
+  const el = document.getElementById('vis3d-eq-error');
+  document.getElementById('vis3d-eq-error-msg').textContent = msg;
+  el.classList.remove('hidden');
+}
+
+// ---- Show status ----
+function vis3d_showStatus(msg) {
+  const el = document.getElementById('vis3d-status');
+  document.getElementById('vis3d-status-msg').textContent = msg;
+  el.classList.remove('hidden');
+}
+
+// ---- Hide overlays ----
+function vis3d_hideMessages() {
+  document.getElementById('vis3d-eq-error').classList.add('hidden');
+  document.getElementById('vis3d-status').classList.add('hidden');
+}
+
+// ---- MAIN GENERATE ----
+async function vis3d_generate() {
+  vis3d_hideMessages();
+
+  const rawEq = document.getElementById('vis3d-eq-input').value.trim();
+  if (!rawEq) { vis3d_showError('Please enter a mathematical equation.'); return; }
+
+  const descText = document.getElementById('vis3d-desc-input').value;
+  const descriptions = vis3d_parseDescriptions(descText);
+  const detectedConsts = vis3d_detectConstants(rawEq);
+
+  // Build/merge constants with defaults
+  detectedConsts.forEach(k => {
+    if (!Vis3D.constants[k]) {
+      Vis3D.constants[k] = { value: 1.0, description: descriptions[k] || k.toLowerCase() + ' parameter' };
+    } else if (descriptions[k]) {
+      Vis3D.constants[k].description = descriptions[k];
+    }
+  });
+  // Remove any that are no longer in equation
+  Object.keys(Vis3D.constants).forEach(k => {
+    if (!detectedConsts.includes(k)) delete Vis3D.constants[k];
+  });
+
+  // Test compile
+  const fn = vis3d_compile(rawEq, Vis3D.dimension === '3d' ? ['x', 'y'] : ['x']);
+  if (!fn) {
+    vis3d_showError("We couldn't understand this equation. Check the syntax and try again.");
+    return;
+  }
+
+  // Quick validation: sample 5 points
+  const testScope = { x: 1, y: 1, ...Object.fromEntries(Object.entries(Vis3D.constants).map(([k,v]) => [k, v.value])), pi: Math.PI, e: Math.E };
+  const testVal = fn(testScope);
+  if (isNaN(testVal)) {
+    vis3d_showError("Equation evaluates to invalid values. Check for division by zero or unsupported functions.");
+    return;
+  }
+
+  Vis3D.equation = rawEq;
+  Vis3D.compiled = fn;
+  Vis3D.generated = true;
+
+  // Loading state
+  const btn = document.getElementById('vis3d-generate-btn');
+  document.getElementById('vis3d-btn-text').textContent = 'Rendering...';
+  document.getElementById('vis3d-btn-icon').textContent = '⏳';
+  btn.disabled = true;
+
+  // Render
+  await new Promise(r => setTimeout(r, 30));
+  if (Vis3D.dimension === '3d') { vis3d_render3D(); } else { vis3d_render2D(); }
+
+  // Restore button
+  document.getElementById('vis3d-btn-text').textContent = 'Generate Visualisation';
+  document.getElementById('vis3d-btn-icon').textContent = '✨';
+  btn.disabled = false;
+
+  vis3d_showStatus(`${Vis3D.dimension === '3d' ? '3D surface' : '2D curve'} generated successfully.`);
+
+  // Build sliders
+  vis3d_buildSliders();
+
+  // Build AI explanation
+  vis3d_buildExplanation(rawEq, descriptions);
+
+  // Show legend
+  document.getElementById('vis3d-legend').classList.remove('hidden');
+  document.getElementById('vis3d-legend-z-label').textContent = Vis3D.dimension === '3d' ? 'Z' : 'Y';
+  document.getElementById('vis3d-legend-z-desc').textContent = Vis3D.dimension === '3d' ? 'Height from formula' : 'Function value';
+}
+
+// ---- Build scope for evaluation ----
+function vis3d_buildScope(x, y) {
+  const scope = { x, y, pi: Math.PI, e: Math.E };
+  Object.entries(Vis3D.constants).forEach(([k, v]) => { scope[k] = v.value; });
+  return scope;
+}
+
+// ---- 3D Plotly render ----
+function vis3d_render3D() {
+  const xMin = parseFloat(document.getElementById('vis3d-xmin').value) || -5;
+  const xMax = parseFloat(document.getElementById('vis3d-xmax').value) || 5;
+  const yMin = parseFloat(document.getElementById('vis3d-ymin').value) || -5;
+  const yMax = parseFloat(document.getElementById('vis3d-ymax').value) || 5;
+  const steps = 60;
+
+  const xVals = Array.from({length: steps}, (_, i) => xMin + i / (steps - 1) * (xMax - xMin));
+  const yVals = Array.from({length: steps}, (_, j) => yMin + j / (steps - 1) * (yMax - yMin));
+  const zVals = yVals.map(y => xVals.map(x => {
+    const v = Vis3D.compiled(vis3d_buildScope(x, y));
+    return isNaN(v) ? 0 : Math.max(-1e6, Math.min(1e6, v));
+  }));
+
+  // Show/hide containers
+  document.getElementById('vis3d-empty-state').classList.add('hidden');
+  document.getElementById('vis3d-chart2d-wrap').classList.add('hidden');
+  const wrap = document.getElementById('vis3d-plotly-wrap');
+  wrap.classList.remove('hidden');
+
+  const cleanEq = Vis3D.equation.replace(/^(?:z|y)\s*=\s*/i, '');
+  document.getElementById('vis3d-chart-title').textContent = `Interactive 3D Surface`;
+  document.getElementById('vis3d-chart-sub').textContent = `z = ${cleanEq}`;
+  document.getElementById('vis3d-latex-badge').textContent = cleanEq;
+  document.getElementById('vis3d-latex-badge').classList.remove('hidden');
+
+  const data = [{
+    z: zVals, x: xVals, y: yVals,
+    type: 'surface',
+    colorscale: 'Viridis',
+    showscale: true,
+    colorbar: { thickness: 14, len: 0.85, tickfont: { family: 'Inter, system-ui', size: 10, color: '#475569' }, outlinecolor: 'rgba(0,0,0,0)', bordercolor: 'rgba(0,0,0,0)', x: 0.99 },
+    lighting: { ambient: 0.85, diffuse: 0.75, specular: 0.2, roughness: 0.5, fresnel: 0.1 },
+    contours: { x: { highlight: false }, y: { highlight: false }, z: { highlight: false } }
+  }];
+
+  const layout = {
+    autosize: true,
+    margin: { l: 0, r: 40, b: 0, t: 10 },
+    paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
+    scene: {
+      xaxis: { title: 'X', showgrid: true, gridcolor: 'rgba(203,213,225,0.5)', zerolinecolor: 'rgba(148,163,184,0.5)', tickfont: { size: 9, color: '#64748b' } },
+      yaxis: { title: 'Y', showgrid: true, gridcolor: 'rgba(203,213,225,0.5)', zerolinecolor: 'rgba(148,163,184,0.5)', tickfont: { size: 9, color: '#64748b' } },
+      zaxis: { title: 'Z', showgrid: true, gridcolor: 'rgba(203,213,225,0.5)', zerolinecolor: 'rgba(148,163,184,0.5)', tickfont: { size: 9, color: '#64748b' } },
+      camera: { eye: { x: 1.5, y: -1.8, z: 1.0 }, up: { x: 0, y: 0, z: 1 } },
+      aspectratio: { x: 1.2, y: 1.2, z: 0.7 },
+      bgcolor: '#ffffff'
+    }
+  };
+
+  Plotly.react('vis3d-plotly', data, layout, { responsive: true, displayModeBar: false });
+}
+
+// ---- 2D Chart.js render ----
+function vis3d_render2D() {
+  const xMin = parseFloat(document.getElementById('vis3d-xmin').value) || -5;
+  const xMax = parseFloat(document.getElementById('vis3d-xmax').value) || 5;
+  const steps = 300;
+  const xs = [], ys = [];
+
+  for (let i = 0; i <= steps; i++) {
+    const x = xMin + i / steps * (xMax - xMin);
+    const scope = { x, y: 0, pi: Math.PI, e: Math.E };
+    Object.entries(Vis3D.constants).forEach(([k, v]) => { scope[k] = v.value; });
+    const val = Vis3D.compiled(scope);
+    xs.push(x.toFixed(3));
+    ys.push(isNaN(val) ? null : Math.max(-1e6, Math.min(1e6, val)));
+  }
+
+  document.getElementById('vis3d-empty-state').classList.add('hidden');
+  document.getElementById('vis3d-plotly-wrap').classList.add('hidden');
+  const wrap = document.getElementById('vis3d-chart2d-wrap');
+  wrap.classList.remove('hidden');
+
+  const cleanEq = Vis3D.equation.replace(/^(?:z|y)\s*=\s*/i, '');
+  document.getElementById('vis3d-chart-title').textContent = `Interactive 2D Curve`;
+  document.getElementById('vis3d-chart-sub').textContent = `y = ${cleanEq}`;
+  document.getElementById('vis3d-latex-badge').textContent = cleanEq;
+  document.getElementById('vis3d-latex-badge').classList.remove('hidden');
+
+  const canvas = document.getElementById('vis3d-canvas2d');
+  if (Vis3D.chartInstance) { Vis3D.chartInstance.destroy(); Vis3D.chartInstance = null; }
+  Vis3D.chartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: xs,
+      datasets: [{ label: `y = ${cleanEq}`, data: ys, borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.08)', borderWidth: 2.5, tension: 0.3, fill: true, pointRadius: 0, spanGaps: true }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: true, position: 'top', labels: { font: { family: 'Inter, system-ui', size: 11, weight: '500' }, boxWidth: 12 } }, tooltip: { callbacks: { title: (items) => `x = ${items[0].label}`, label: (item) => `y = ${Number(item.raw).toFixed(4)}` } } },
+      scales: {
+        x: { grid: { color: 'rgba(226,232,240,0.6)' }, ticks: { maxTicksLimit: 12, font: { family: 'JetBrains Mono, monospace', size: 10 }, color: '#64748b' } },
+        y: { grid: { color: 'rgba(226,232,240,0.6)' }, ticks: { font: { family: 'JetBrains Mono, monospace', size: 10 }, color: '#64748b' } }
+      }
+    }
+  });
+}
+
+// ---- Build interactive sliders for constants ----
+function vis3d_buildSliders() {
+  const container = document.getElementById('vis3d-sliders-container');
+  const card = document.getElementById('vis3d-sliders-card');
+  const consts = Object.entries(Vis3D.constants);
+  container.innerHTML = '';
+
+  if (consts.length === 0) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+
+  consts.forEach(([key, meta]) => {
+    const val = meta.value;
+    const min = val > 0 ? -Math.abs(val) * 5 : val * 5;
+    const sliderMin = Math.min(-10, min);
+    const sliderMax = Math.max(10, Math.abs(val) * 5);
+    const step = Math.abs(sliderMax - sliderMin) > 20 ? 0.5 : 0.1;
+
+    const div = document.createElement('div');
+    div.className = 'param-row';
+    div.innerHTML = `
+      <div class="w-28 shrink-0">
+        <div class="text-xs font-bold text-slate-800">${key}</div>
+        <div class="text-[10px] text-slate-400 truncate" title="${meta.description}">${meta.description}</div>
+      </div>
+      <input type="range" class="ref-slider flex-1" min="${sliderMin}" max="${sliderMax}" step="${step}"
+        value="${val}" oninput="vis3d_onSlider('${key}', this.value, this)">
+      <div class="w-12 text-right text-xs font-mono text-indigo-700 font-bold" id="vis3d-slabel-${key}">${parseFloat(val).toFixed(2)}</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// ---- Slider change handler ----
+function vis3d_onSlider(key, rawVal, el) {
+  const val = parseFloat(rawVal);
+  if (Vis3D.constants[key]) Vis3D.constants[key].value = val;
+  const label = document.getElementById(`vis3d-slabel-${key}`);
+  if (label) label.textContent = val.toFixed(2);
+  // Debounced re-render
+  clearTimeout(vis3d_onSlider._timer);
+  vis3d_onSlider._timer = setTimeout(() => {
+    if (Vis3D.generated) {
+      if (Vis3D.dimension === '3d') vis3d_render3D(); else vis3d_render2D();
+    }
+  }, 60);
+}
+
+// ---- Reset sliders ----
+function vis3d_resetSliders() {
+  Object.entries(Vis3D.constants).forEach(([k, v]) => { v.value = 1.0; });
+  vis3d_buildSliders();
+  if (Vis3D.generated) { if (Vis3D.dimension === '3d') vis3d_render3D(); else vis3d_render2D(); }
+}
+
+// ---- Build AI explanation card ----
+function vis3d_buildExplanation(rawEq, descriptions) {
+  const card = document.getElementById('vis3d-ai-card');
+  const desc = document.getElementById('vis3d-ai-desc');
+  const paramsEl = document.getElementById('vis3d-ai-params');
+  card.classList.remove('hidden');
+
+  const cleanEq = rawEq.replace(/^(?:z|y)\s*=\s*/i, '');
+  const dim = Vis3D.dimension;
+
+  // Auto-generate description
+  const isWave = /sin|cos/.test(cleanEq);
+  const isGauss = /exp/.test(cleanEq);
+  const isSaddle = /x.2.*-.*y.2|y.2.*-.*x.2/.test(cleanEq);
+  const hasMult = Object.keys(Vis3D.constants).length > 0;
+
+  let explanation = `This equation creates ${dim === '3d' ? 'a 3D parametric surface' : 'a 2D function curve'}. `;
+  if (isWave) explanation += 'The function uses trigonometric operations (sin/cos), producing periodic oscillating waves. ';
+  if (isGauss) explanation += 'The exponential (exp) function causes the surface to peak at the origin and decay outward. ';
+  if (isSaddle) explanation += 'Subtracting x² and y² terms creates a saddle-shaped surface that curves up in one direction and down in another. ';
+  if (hasMult) explanation += `You can adjust the constants (${Object.keys(Vis3D.constants).join(', ')}) using the sliders below to see how they affect the shape in real time.`;
+
+  desc.textContent = explanation;
+
+  // Parameter breakdown
+  const consts = Object.entries(Vis3D.constants);
+  if (consts.length > 0) {
+    paramsEl.innerHTML = `<div class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Parameters</div>`
+      + consts.map(([k, v]) => `<div class="flex items-start gap-2 text-xs py-1 border-b border-slate-100 last:border-0"><span class="font-bold text-indigo-700 w-6">${k}</span><span class="text-slate-600">— ${v.description} (current: <b class="text-slate-800">${parseFloat(v.value).toFixed(2)}</b>)</span></div>`).join('');
+  } else {
+    paramsEl.innerHTML = `<p class="text-[11px] text-slate-500">No adjustable constants detected in this equation. Try adding A, B, C as multipliers.</p>`;
+  }
+}
+
+// ---- Reset camera ----
+function vis3d_resetCamera() {
+  if (Vis3D.dimension === '3d') {
+    Plotly.relayout('vis3d-plotly', { 'scene.camera.eye': { x: 1.5, y: -1.8, z: 1.0 }, 'scene.camera.up': { x: 0, y: 0, z: 1 } });
+  }
+}
+
+// ---- Legacy stubs (kept to not break other dashboard tab calls) ----
+let currentVisDimension = '3d';
+let user2DChartInstance = null;
+
+const formulaPresets = {
+  waves: {
+    type: '3d',
+    name: 'Waves (3D)',
+    rawFormula: 'a * sin(x) * cos(b * y)',
+    defaultA: 3.0,
+    defaultB: 5.0,
+    latex: (a, b) => `z = ${parseFloat(a).toFixed(1)} \\sin(x) \\cos(${parseFloat(b).toFixed(1)}y)`
+  },
+  ripple: {
+    type: '3d',
+    name: 'Ripple / Sinc (3D)',
+    rawFormula: 'a * sin(b * sqrt(x*x + y*y)) / (sqrt(x*x + y*y) + 0.1)',
+    defaultA: 2.5,
+    defaultB: 2.0,
+    latex: (a, b) => `z = ${parseFloat(a).toFixed(1)} \\frac{\\sin(${parseFloat(b).toFixed(1)} \\sqrt{x^2 + y^2})}{\\sqrt{x^2 + y^2} + 0.1}`
+  },
+  saddle: {
+    type: '3d',
+    name: 'Hyperbolic Paraboloid (Saddle)',
+    rawFormula: '(a * x*x - b * y*y) / 4',
+    defaultA: 1.0,
+    defaultB: 1.0,
+    latex: (a, b) => `z = \\frac{${parseFloat(a).toFixed(1)} x^2 - ${parseFloat(b).toFixed(1)} y^2}{4}`
+  },
+  eggcrate: {
+    type: '3d',
+    name: 'Egg-Crate Surface',
+    rawFormula: 'a * cos(x) * cos(b * y)',
+    defaultA: 2.0,
+    defaultB: 1.5,
+    latex: (a, b) => `z = ${parseFloat(a).toFixed(1)} \\cos(x) \\cos(${parseFloat(b).toFixed(1)}y)`
+  },
+  gaussian: {
+    type: '3d',
+    name: 'Gaussian Bell / Peak',
+    rawFormula: 'a * exp(-0.25 * b * (x*x + y*y))',
+    defaultA: 3.5,
+    defaultB: 1.0,
+    latex: (a, b) => `z = ${parseFloat(a).toFixed(1)} e^{-${parseFloat(0.25 * b).toFixed(2)}(x^2 + y^2)}`
+  },
+  damped2d: {
+    type: '2d',
+    name: '2D Damped Sine Curve',
+    rawFormula: 'a * sin(b * x) * exp(-0.15 * Math.abs(x))',
+    defaultA: 3.0,
+    defaultB: 2.0,
+    latex: (a, b) => `y = ${parseFloat(a).toFixed(1)} \\sin(${parseFloat(b).toFixed(1)} x) e^{-0.15 |x|}`
+  },
+  poly2d: {
+    type: '2d',
+    name: '2D Cubic Polynomial',
+    rawFormula: 'x^3 - a * x + b',
+    defaultA: 4.0,
+    defaultB: 2.0,
+    latex: (a, b) => `y = x^3 - ${parseFloat(a).toFixed(1)}x + ${parseFloat(b).toFixed(1)}`
+  }
+};
+
+// Legacy stubs — these functions were used by the old explorer UI
+function switchVisDimension(dim) {
+  currentVisDimension = dim;
+  const btn3D = document.getElementById('btnVis3D');
+  const btn2D = document.getElementById('btnVis2D');
+  const container3D = document.getElementById('canvasContainer3D');
+  const container2D = document.getElementById('canvasContainer2D');
+  const prefix = document.getElementById('formulaPrefixDisplay');
+  const inputLabel = document.getElementById('formulaInputLabel');
+  const syntaxHelp = document.getElementById('formulaInputSyntaxHelp');
+
+  if (dim === '3d') {
+    btn3D.className = 'px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5';
+    btn2D.className = 'px-4 py-1.5 text-slate-700 hover:text-slate-900 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5';
+    container3D.classList.remove('hidden');
+    container2D.classList.add('hidden');
+    prefix.textContent = 'z =';
+    inputLabel.textContent = 'Enter 3D Surface Formula:';
+    syntaxHelp.textContent = 'z = f(x, y, a, b)';
+    
+    // Only set default if input is completely empty
+    const curVal = document.getElementById('mainFormulaInput').value.trim();
+    if (!curVal) {
+      document.getElementById('mainFormulaInput').value = 'a * sin(x) * cos(b * y)';
+      document.getElementById('graphPresetSelect').value = 'waves';
+    }
+    setTimeout(render3DPlotly, 50);
+  } else {
+    btn2D.className = 'px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5';
+    btn3D.className = 'px-4 py-1.5 text-slate-700 hover:text-slate-900 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5';
+    container3D.classList.add('hidden');
+    container2D.classList.remove('hidden');
+    prefix.textContent = 'y =';
+    inputLabel.textContent = 'Enter 2D Function Curve:';
+    syntaxHelp.textContent = 'y = f(x, a, b)';
+
+    // Only set default if input is completely empty
+    const curVal = document.getElementById('mainFormulaInput').value.trim();
+    if (!curVal) {
+      document.getElementById('mainFormulaInput').value = 'a * sin(b * x) * exp(-0.15 * Math.abs(x))';
+      document.getElementById('graphPresetSelect').value = 'damped2d';
+    }
+    setTimeout(render2DChart, 50);
+  }
+
+  updateLiveFormulaLatex();
+}
+
+function loadFormulaPreset(key) {
+  const preset = formulaPresets[key];
+  if (!preset) return;
+
+  document.getElementById('mainFormulaInput').value = preset.rawFormula;
+  document.getElementById('paramA').value = preset.defaultA;
+  document.getElementById('paramB').value = preset.defaultB;
+  document.getElementById('labelA').textContent = parseFloat(preset.defaultA).toFixed(2);
+  document.getElementById('labelB').textContent = parseFloat(preset.defaultB).toFixed(2);
+  document.getElementById('graphPresetSelect').value = key;
+
+  if (preset.type !== currentVisDimension) {
+    switchVisDimension(preset.type);
+  } else {
+    executeFormulaRender();
+  }
+}
+
+function onSelectDropdownPreset() {
+  const val = document.getElementById('graphPresetSelect').value;
+  if (val === 'custom') {
+    focusFormulaInput();
+    return;
+  }
+  loadFormulaPreset(val);
+}
+
+function onParamSliderChange() {
+  const aVal = parseFloat(document.getElementById('paramA').value);
+  const bVal = parseFloat(document.getElementById('paramB').value);
+  document.getElementById('labelA').textContent = aVal.toFixed(2);
+  document.getElementById('labelB').textContent = bVal.toFixed(2);
+
+  updateLiveFormulaLatex();
+
+  if (currentVisDimension === '3d') {
+    render3DPlotly();
+  } else {
+    render2DChart();
+  }
+}
+
+function updateLiveFormulaLatex() {
+  const aVal = parseFloat(document.getElementById('paramA').value) || 3.0;
+  const bVal = parseFloat(document.getElementById('paramB').value) || 5.0;
+  const raw = document.getElementById('mainFormulaInput').value.trim();
+  const preview = document.getElementById('liveFormulaRender');
+
+  // Look up if an exact preset matches
+  const selKey = document.getElementById('graphPresetSelect').value;
+  if (formulaPresets[selKey] && formulaPresets[selKey].rawFormula.replace(/\s+/g, '') === raw.replace(/\s+/g, '')) {
+    const p = formulaPresets[selKey];
+    preview.innerHTML = `$$${p.latex(aVal, bVal)}$$`;
+  } else {
+    // Generate clean mathematical string from custom input
+    let clean = raw
+      .replace(/\ba\b/g, aVal.toFixed(1))
+      .replace(/\bb\b/g, bVal.toFixed(1))
+      .replace(/\*/g, ' \\cdot ')
+      .replace(/Math\./g, '')
+      .replace(/sin/g, '\\sin')
+      .replace(/cos/g, '\\cos')
+      .replace(/tan/g, '\\tan')
+      .replace(/exp\((.*?)\)/g, 'e^{$1}')
+      .replace(/sqrt\((.*?)\)/g, '\\sqrt{$1}');
+    
+    const prefix = currentVisDimension === '3d' ? 'z' : 'y';
+    preview.innerHTML = `$$${prefix} = ${clean}$$`;
+  }
+
+  renderAllMath(preview);
+}
+
+function executeFormulaRender() {
+  updateLiveFormulaLatex();
+  if (currentVisDimension === '3d') {
+    render3DPlotly();
+  } else {
+    render2DChart();
+  }
+}
+
+function focusFormulaInput() {
+  const input = document.getElementById('mainFormulaInput');
+  input.focus();
+  input.select();
+}
+
+function clearFormulaInput() {
+  document.getElementById('mainFormulaInput').value = '';
+  document.getElementById('mainFormulaInput').focus();
+}
+
+function resetVisualizationParams() {
+  document.getElementById('paramA').value = 3.0;
+  document.getElementById('paramB').value = 5.0;
+  document.getElementById('labelA').textContent = '3.00';
+  document.getElementById('labelB').textContent = '5.00';
+  if (currentVisDimension === '3d') {
+    reset3DCamera();
+    loadFormulaPreset('waves');
+  } else {
+    loadFormulaPreset('damped2d');
+  }
+}
+
+function zoomVisualization(factor) {
+  if (currentVisDimension === '3d') {
+    const container = document.getElementById('plotly3DContainer');
+    if (!container || !container._fullLayout) return;
+    const currentEye = container._fullLayout.scene._scene.getCamera().eye;
+    const update = {
+      'scene.camera.eye': {
+        x: currentEye[0] / factor,
+        y: currentEye[1] / factor,
+        z: currentEye[2] / factor
+      }
+    };
+    Plotly.relayout('plotly3DContainer', update);
+  } else {
+    const canvas = document.getElementById('user2DCanvas');
+    if (user2DChartInstance) {
+      const curMax = user2DChartInstance.options.scales.y.suggestedMax || 5;
+      user2DChartInstance.options.scales.y.suggestedMax = curMax / factor;
+      user2DChartInstance.options.scales.y.suggestedMin = -curMax / factor;
+      user2DChartInstance.update();
+    }
+  }
+}
+
+function reset3DCamera() {
+  const update = {
+    'scene.camera.eye': { x: 1.45, y: -1.75, z: 0.95 },
+    'scene.camera.up': { x: 0, y: 0, z: 1 }
+  };
+  Plotly.relayout('plotly3DContainer', update);
+}
+
+/* =========================================================================
+   MATHEMATICAL EXPRESSION SANITIZER & EVALUATOR
+   ========================================================================= */
+function compileMathFunction(expr, varNames) {
+  try {
+    let clean = (expr || '')
+      .replace(/^(?:z|y|f\([xy, ]+\))\s*=\s*/i, '')
+      .replace(/\^/g, '**')
+      .replace(/r\b/g, 'Math.hypot(x,y)')
+      .replace(/(\d+)\s*([a-zA-Z\(])/g, '$1*$2')
+      .replace(/([a-zA-Z\)])\s*(\d+)/g, '$1*$2')
+      .replace(/(\))\s*\(/g, ')*(')
+      .replace(/\b([abxy])([abxy])\b/g, '$1*$2')
+      .replace(/\bsin\(/gi, 'Math.sin(')
+      .replace(/\bcos\(/gi, 'Math.cos(')
+      .replace(/\btan\(/gi, 'Math.tan(')
+      .replace(/\bexp\(/gi, 'Math.exp(')
+      .replace(/\bsqrt\(/gi, 'Math.sqrt(')
+      .replace(/\babs\(/gi, 'Math.abs(')
+      .replace(/\blog\(/gi, 'Math.log(')
+      .replace(/\bpi\b/gi, 'Math.PI');
+
+    return new Function(...varNames, `try { return ${clean}; } catch(e) { return 0; }`);
+  } catch(e) {
+    return () => 0;
+  }
+}
+
+/* =========================================================================
+   3D PLOTLY SURFACE RENDERING (VIRIDIS / PLASMA COLORMESH)
+   ========================================================================= */
+function render3DPlotly() {
+  const container = document.getElementById('plotly3DContainer');
+  if (!container || !window.Plotly) return;
+
+  const aVal = parseFloat(document.getElementById('paramA').value) || 3.0;
+  const bVal = parseFloat(document.getElementById('paramB').value) || 5.0;
+  const raw = document.getElementById('mainFormulaInput').value || 'a * sin(x) * cos(b * y)';
+
+  const fn = compileMathFunction(raw, ['x', 'y', 'a', 'b']);
+
+  const xMin = -3.5, xMax = 3.5;
+  const yMin = -6.5, yMax = 4.5;
+  const stepsX = 55;
+  const stepsY = 55;
+
+  const xVals = [];
+  const yVals = [];
+  const zVals = [];
+
+  for (let i = 0; i < stepsX; i++) {
+    xVals.push(xMin + (i / (stepsX - 1)) * (xMax - xMin));
+  }
+  for (let j = 0; j < stepsY; j++) {
+    yVals.push(yMin + (j / (stepsY - 1)) * (yMax - yMin));
+  }
+
+  for (let j = 0; j < stepsY; j++) {
+    const row = [];
+    const y = yVals[j];
+    for (let i = 0; i < stepsX; i++) {
+      const x = xVals[i];
+      let z = fn(x, y, aVal, bVal);
+      if (!Number.isFinite(z)) z = 0;
+      row.push(z);
+    }
+    zVals.push(row);
+  }
+
+  // Exact Plasma Colormap matching reference screenshot (bright yellow, orange, violet to deep navy)
+  const data = [{
+    z: zVals,
+    x: xVals,
+    y: yVals,
+    type: 'surface',
+    colorscale: 'Plasma',
+    showscale: true,
+    colorbar: {
+      thickness: 16,
+      len: 0.85,
+      tickfont: { family: 'Inter, system-ui', size: 10, color: '#475569' },
+      outlinecolor: 'rgba(0,0,0,0)',
+      bordercolor: 'rgba(0,0,0,0)',
+      x: 0.98
+    },
+    lighting: {
+      ambient: 0.85,
+      diffuse: 0.75,
+      specular: 0.25,
+      roughness: 0.5,
+      fresnel: 0.15
+    },
+    contours: {
+      x: { highlight: false },
+      y: { highlight: false },
+      z: { highlight: false }
+    }
+  }];
+
+  const layout = {
+    autosize: true,
+    margin: { l: 0, r: 35, b: 0, t: 0 },
+    paper_bgcolor: '#ffffff',
+    plot_bgcolor: '#ffffff',
+    scene: {
+      xaxis: {
+        title: '',
+        showgrid: true,
+        gridcolor: 'rgba(203, 213, 225, 0.45)',
+        zerolinecolor: 'rgba(148, 163, 184, 0.5)',
+        tickfont: { size: 9, color: '#64748b' }
+      },
+      yaxis: {
+        title: 'Y',
+        showgrid: true,
+        gridcolor: 'rgba(203, 213, 225, 0.45)',
+        zerolinecolor: 'rgba(148, 163, 184, 0.5)',
+        tickfont: { size: 9, color: '#64748b' }
+      },
+      zaxis: {
+        title: 'Z',
+        showgrid: true,
+        gridcolor: 'rgba(203, 213, 225, 0.45)',
+        zerolinecolor: 'rgba(148, 163, 184, 0.5)',
+        tickfont: { size: 9, color: '#64748b' }
+      },
+      camera: {
+        eye: { x: 1.45, y: -1.75, z: 0.95 },
+        up: { x: 0, y: 0, z: 1 }
+      },
+      aspectratio: { x: 1.2, y: 1.4, z: 0.8 }
+    }
+  };
+
+  const config = {
+    responsive: true,
+    displayModeBar: false
+  };
+
+  Plotly.react('plotly3DContainer', data, layout, config);
+}
+
+/* =========================================================================
+   2D FUNCTION CURVE RENDERING (CHART.JS WITH DERIVATIVE OVERLAY)
+   ========================================================================= */
+function render2DChart() {
+  const canvas = document.getElementById('user2DCanvas');
+  if (!canvas) return;
+
+  const aVal = parseFloat(document.getElementById('paramA').value) || 3.0;
+  const bVal = parseFloat(document.getElementById('paramB').value) || 2.0;
+  const raw = document.getElementById('mainFormulaInput').value || 'a * sin(b * x)';
+
+  const fn = compileMathFunction(raw, ['x', 'a', 'b']);
+
+  const labels = [];
+  const dataF = [];
+  const dataSlope = [];
+
+  const xMin = -6.28, xMax = 6.28, step = 0.2;
+  const delta = 0.001;
+
+  for (let x = xMin; x <= xMax; x += step) {
+    labels.push(x.toFixed(1));
+    let y = fn(x, aVal, bVal);
+    let yDelta = fn(x + delta, aVal, bVal);
+    let slope = (yDelta - y) / delta;
+
+    dataF.push(Number.isFinite(y) ? y : 0);
+    dataSlope.push(Number.isFinite(slope) ? Math.max(-25, Math.min(25, slope)) : 0);
+  }
+
+  const statusEl = document.getElementById('formula2DStatus');
+  if (statusEl) {
+    statusEl.innerHTML = `Plotting function curve with parameters: $a = ${aVal.toFixed(1)}, b = ${bVal.toFixed(1)}$`;
+    renderAllMath(statusEl);
+  }
+
+  if (user2DChartInstance) user2DChartInstance.destroy();
+  user2DChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Function y = f(x)',
+          data: dataF,
+          borderColor: '#4f46e5',
+          backgroundColor: 'rgba(79, 70, 229, 0.08)',
+          borderWidth: 2.5,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 0
+        },
+        {
+          label: "Numerical Gradient f'(x)",
+          data: dataSlope,
+          borderColor: '#e11d48',
+          borderWidth: 1.8,
+          borderDash: [4, 4],
+          tension: 0.3,
+          fill: false,
+          pointRadius: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: {
+          grid: { color: 'rgba(226, 232, 240, 0.6)' },
+          ticks: { maxTicksLimit: 12, font: { family: 'JetBrains Mono, monospace', size: 10 }, color: '#64748b' }
+        },
+        y: {
+          grid: { color: 'rgba(226, 232, 240, 0.6)' },
+          ticks: { font: { family: 'JetBrains Mono, monospace', size: 10 }, color: '#64748b' }
+        }
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { font: { family: 'Inter, system-ui', size: 11, weight: '500' }, boxWidth: 12 }
+        }
+      }
+    }
+  });
+}
+
+/* =========================================================================
+   DIAGNOSTIC TEST (WITH COMPLETE KATEX ACCURACY)
+   ========================================================================= */
+const diagQuestions = [
+  { q: "Which normal form removes partial dependency from a relation?", o: ["1NF", "2NF", "3NF", "BCNF"], a: 1 },
+  { q: "If $A \\rightarrow B$ and $B \\rightarrow C$, what can be inferred via transitivity?", o: ["$A \\rightarrow C$", "$C \\rightarrow A$", "$B \\rightarrow A$", "$A \\rightarrow B$ only"], a: 0 },
+  { q: "Which SQL command is used to remove all rows while keeping the table structure?", o: ["DROP", "DELETE", "TRUNCATE", "REMOVE"], a: 2 },
+  { q: "A primary key in a relational table must be:", o: ["Nullable", "Unique and non-null", "Only numeric", "Repeated"], a: 1 },
+  { q: "What is the derivative of $f(x) = x^4$ with respect to $x$?", o: ["$4x^3$", "$3x^4$", "$x^3$", "$4x^4$"], a: 0 }
+];
+let diagIdx = 0, diagAnswers = {};
+
+function renderDiagnostic() {
+  const q = diagQuestions[diagIdx];
+  document.getElementById('diagQNum').textContent = `Question ${diagIdx + 1} of ${diagQuestions.length}`;
+  const qText = document.getElementById('diagQuestionText');
+  qText.innerHTML = q.q;
+  
+  const box = document.getElementById('diagOptionsBox');
+  box.innerHTML = '';
+  q.o.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    const isSel = diagAnswers[diagIdx] === i;
+    btn.className = `w-full text-left p-3 rounded-xl border text-xs font-medium transition-colors ${isSel ? 'border-indigo-600 bg-indigo-50/80 text-indigo-700 font-bold ring-1 ring-indigo-500/20' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800'}`;
+    btn.innerHTML = opt;
+    btn.onclick = () => { diagAnswers[diagIdx] = i; renderDiagnostic(); };
+    box.appendChild(btn);
+  });
+  document.getElementById('diagNextBtn').textContent = diagIdx === diagQuestions.length - 1 ? 'Finish Test ✓' : 'Next →';
+  
+  renderAllMath(document.getElementById('view-diagnostic'));
+}
+
+function nextQ() {
+  if (diagAnswers[diagIdx] === undefined) { alert('Please select an answer.'); return; }
+  if (diagIdx < diagQuestions.length - 1) { diagIdx++; renderDiagnostic(); }
+  else {
+    let score = diagQuestions.reduce((acc, q, i) => acc + (diagAnswers[i] === q.a ? 1 : 0), 0);
+    alert(`Diagnostic complete! Ansari Yasin scored ${score}/${diagQuestions.length}. Mistake DNA profile updated.`);
+    switchTab('dna');
+  }
+}
+function prevQ() { if (diagIdx > 0) { diagIdx--; renderDiagnostic(); } }
+
+/* =========================================================================
+   FUTURE PERFORMANCE SIMULATOR
+   ========================================================================= */
+function runSim() {
+  const h = +document.getElementById('simHours').value;
+  const f = +document.getElementById('simFocus').value;
+  const d = +document.getElementById('simDays').value;
+  document.getElementById('hoursOut').textContent = h.toFixed(1) + ' hrs';
+  document.getElementById('focusOut').textContent = f + '%';
+  document.getElementById('daysOut').textContent = d + ' days';
+
+  let gain = (h - 2) * 1.5 + (f - 50) * 0.045 + (d - 20) * 0.08;
+  let low = Math.max(50, Math.round(74 + gain));
+  let high = Math.min(95, low + 5);
+
+  document.getElementById('simPred').textContent = low + '–' + high + '%';
+  document.getElementById('simCons').textContent = h >= 3 ? 'Excellent' : h >= 2 ? 'Good' : 'Needs work';
+  document.getElementById('simRisk').textContent = Math.max(8, Math.round(24 - (h - 2) * 3 - (f - 50) * 0.06)) + '/100';
+}
+
+/* =========================================================================
+   SOLVER HELPERS
+   ========================================================================= */
+function setSolverInput(text) {
+  document.getElementById('solverInputArea').value = text;
+}
+function setRandomSolverEquation() {
+  const formulas = [
+    'Differentiate y = 3x^4 - 5x^3 + 2x^2 - 7x + 4',
+    'Find \\int (4x^3 + 6x - 5) dx',
+    'Solve 2x^2 - 8x + 6 = 0'
+  ];
+  setSolverInput(formulas[Math.floor(Math.random() * formulas.length)]);
+}
+function triggerSolveEquation() {
+  // Delegate to the SolverEngine which handles the full API call, loading state, and rendering
+  if (window.SolverEngine) {
+    SolverEngine.solveProblem();
+  } else {
+    // Fallback: just render math if solver module hasn't loaded yet
+    const solverView = document.getElementById('view-solver');
+    renderAllMath(solverView);
+  }
+}
+
+// Initial Boot Sequence
+window.addEventListener('DOMContentLoaded', () => {
+  initPerfChart();
+  renderDiagnostic();
+  runSim();
+  renderAllMath(document.body);
+
+  // Initialize new visualizer with default preset
+  setTimeout(() => {
+    vis3d_loadPreset('wave3d');
+  }, 200);
+});
+</script>
+<svg id="js-plotly-tester" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="position: absolute; left: -10000px; top: -10000px; width: 9000px; height: 9000px; z-index: 1;"><path class="js-reference-point" d="M0,0H1V1H0Z" style="stroke-width: 0; fill: black;"></path></svg>
+
+
+
+<div id="profileDropdown" class="absolute right-4 top-16 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-2 hidden z-50">
+  <div class="px-4 py-2 border-b border-slate-100">
+    <p class="text-xs font-bold text-slate-900 profile-name-display">Ansari Yasin</p>
+    <p class="text-[10px] text-slate-500 profile-email-display">ansari.yasin@student.edu</p>
+  </div>
+  <a href="#" onclick="toggleAuthModal(true); switchAuthView('login');" class="flex items-center px-4 py-2 text-xs text-slate-700 hover:bg-slate-50">🔑 Sign In / Account</a>
+  <a href="#" onclick="AuthManager.logout();" class="flex items-center px-4 py-2 text-xs text-red-600 hover:bg-red-50">🚪 Logout / Switch User</a>
+</div>
+
+
+<!-- ==================== AUTHENTICATION MODAL (OVERLAY) ==================== -->
+<div id="authModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative border border-slate-200">
+    <button onclick="toggleAuthModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg text-lg">✕</button>
+    
+    <!-- LOGIN VIEW -->
+    <div id="authViewLogin">
+      <h2 class="text-xl font-bold text-slate-900">Welcome back, Ansari Yasin</h2>
+      <p class="text-xs text-slate-500 mb-4">Sign in to sync your mathematical solutions and history</p>
+      <form class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
+          <input type="email" value="ansari.yasin@student.edu" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+          <input type="password" value="password123" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm shadow-sm transition-colors">Sign In to Solver</button>
+      </form>
+      <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+        <span class="text-xs text-slate-500">Don't have an account? <a href="#" onclick="switchAuthView('signup')" class="text-indigo-600 font-semibold hover:underline">Create Account</a></span>
+        <a href="#" onclick="switchAuthView('forgot')" class="text-xs text-slate-400 hover:underline">Forgot?</a>
+      </div>
+    </div>
+
+    <!-- SIGNUP VIEW -->
+    <div id="authViewSignup" class="hidden">
+      <h2 class="text-xl font-bold text-slate-900">Create Mathematical Account</h2>
+      <p class="text-xs text-slate-500 mb-4">Save solutions, favorite graphs, and track learning</p>
+      <form class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+          <input type="text" value="Ansari Yasin" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
+          <input type="email" value="ansari.yasin@student.edu" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+          <input type="password" value="password123" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm shadow-sm transition-colors">Create Account</button>
+      </form>
+      <div class="mt-4 pt-3 border-t border-slate-100 text-center">
+        <span class="text-xs text-slate-500">Already registered? <a href="#" onclick="switchAuthView('login')" class="text-indigo-600 font-semibold hover:underline">Sign In</a></span>
+      </div>
+    </div>
+
+    <!-- FORGOT PASSWORD VIEW -->
+    <div id="authViewForgot" class="hidden">
+      <h2 class="text-xl font-bold text-slate-900">Reset Password</h2>
+      <p class="text-xs text-slate-500 mb-4">Enter your email to receive password reset link</p>
+      <form class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
+          <input type="email" value="ansari.yasin@student.edu" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm shadow-sm transition-colors">Send Reset Link</button>
+      </form>
+      <div class="mt-4 pt-3 border-t border-slate-100 text-center">
+        <a href="#" onclick="switchAuthView('login')" class="text-xs text-indigo-600 font-semibold hover:underline">← Back to Sign In</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+  function toggleAuthModal(show = true) {
+    const modal = document.getElementById('authModal');
+    if (modal) {
+      if (show) modal.classList.remove('hidden');
+      else modal.classList.add('hidden');
+    }
+  }
+
+  function switchAuthView(viewName) {
+    const login = document.getElementById('authViewLogin');
+    const signup = document.getElementById('authViewSignup');
+    const forgot = document.getElementById('authViewForgot');
+    if (login) login.classList.add('hidden');
+    if (signup) signup.classList.add('hidden');
+    if (forgot) forgot.classList.add('hidden');
+
+    if (viewName === 'login' && login) login.classList.remove('hidden');
+    if (viewName === 'signup' && signup) signup.classList.remove('hidden');
+    if (viewName === 'forgot' && forgot) forgot.classList.remove('hidden');
+  }
+
+  function toggleProfileDropdown() {
+    const drop = document.getElementById('profileDropdown');
+    if (drop) drop.classList.toggle('hidden');
+  }
+
+  document.addEventListener('click', (e) => {
+    const drop = document.getElementById('profileDropdown');
+    if (drop && !e.target.closest('#profileDropdown') && !e.target.closest('button[onclick="toggleProfileDropdown()"]')) {
+      drop.classList.add('hidden');
+    }
+  });
+</script>
+
+
+  <!-- AI Mathematics Visual Solver API Integration Modules -->
+  <script src="config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/solver.js"></script>
+  <script src="js/visualization.js"></script>
+  <script src="js/history.js"></script>
+</body>
+</html>

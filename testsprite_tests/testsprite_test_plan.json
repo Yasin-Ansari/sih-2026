@@ -1,0 +1,110 @@
+[
+  {
+    "id": "TC-001",
+    "title": "Calculus Integration Reasoning & SymPy Verification",
+    "description": "Verify step-by-step reasoning and SymPy validation for integration problem 'integrate x^2 + 3*x'",
+    "type": "backend",
+    "endpoint": "/api/solve",
+    "method": "POST",
+    "payload": { "problem": "integrate x^2 + 3*x" }
+  },
+  {
+    "id": "TC-002",
+    "title": "Algebra Quadratic Equation Solving",
+    "description": "Verify root isolation and symbolic verification for 'solve x^2 - 5*x + 6 = 0'",
+    "type": "backend",
+    "endpoint": "/api/solve",
+    "method": "POST",
+    "payload": { "problem": "solve x^2 - 5*x + 6 = 0" }
+  },
+  {
+    "id": "TC-003",
+    "title": "Trigonometric Identity Simplification",
+    "description": "Verify trigonometric simplification for 'simplify sin(x)^2 + cos(x)^2'",
+    "type": "backend",
+    "endpoint": "/api/solve",
+    "method": "POST",
+    "payload": { "problem": "simplify sin(x)^2 + cos(x)^2" }
+  },
+  {
+    "id": "TC-004",
+    "title": "3D Surface Manifold Evaluation",
+    "description": "Verify 3D grid evaluation for 'z = sin(sqrt(x^2 + y^2))'",
+    "type": "backend",
+    "endpoint": "/api/solve",
+    "method": "POST",
+    "payload": { "problem": "z = sin(sqrt(x^2 + y^2))" }
+  },
+  {
+    "id": "TC-005",
+    "title": "Calculus Differentiation Product Rule",
+    "description": "Verify derivative calculation for 'd/dx (x^3 * sin(x))'",
+    "type": "backend",
+    "endpoint": "/api/solve",
+    "method": "POST",
+    "payload": { "problem": "d/dx (x^3 * sin(x))" }
+  },
+  {
+    "id": "TC-006",
+    "title": "2D Custom Visualization Grid Generator",
+    "description": "Verify 2D curve points generation for y = 3x^2 - 5x + 2",
+    "type": "backend",
+    "endpoint": "/api/visualization",
+    "method": "POST",
+    "payload": {
+      "expression": "3*x^2 - 5*x + 2",
+      "type": "2d",
+      "x_min": -5,
+      "x_max": 5,
+      "points": 50
+    }
+  },
+  {
+    "id": "TC-007",
+    "title": "3D Circular Paraboloid Grid Mesh Generator",
+    "description": "Verify 3D mesh surface generation for z = x^2 + y^2",
+    "type": "backend",
+    "endpoint": "/api/visualization",
+    "method": "POST",
+    "payload": {
+      "expression": "x^2 + y^2",
+      "type": "3d",
+      "x_min": -3,
+      "x_max": 3,
+      "y_min": -3,
+      "y_max": 3,
+      "points": 40
+    }
+  },
+  {
+    "id": "TC-008",
+    "title": "Singular Function Division-by-Zero Handling",
+    "description": "Verify safe numerical bounds handling for y = 1/x without NaN crash",
+    "type": "backend",
+    "endpoint": "/api/visualization",
+    "method": "POST",
+    "payload": {
+      "expression": "1/x",
+      "type": "2d",
+      "x_min": -5,
+      "x_max": 5,
+      "points": 100
+    }
+  },
+  {
+    "id": "TC-009",
+    "title": "Server Health Liveness Endpoint",
+    "description": "Verify backend health endpoint /api/health",
+    "type": "backend",
+    "endpoint": "/api/health",
+    "method": "GET"
+  },
+  {
+    "id": "TC-010",
+    "title": "Random Graphable Formula Generator",
+    "description": "Verify random formula generator endpoint /api/random-formula",
+    "type": "backend",
+    "endpoint": "/api/random-formula",
+    "method": "GET"
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "type": "frontend",
+  "projectPath": "c:\\Users\\yasin\\Desktop\\SIH2",
+  "projectName": "SIH2",
+  "localPort": 5500,
+  "testScope": "codebase",
+  "serverMode": "development"
+}
