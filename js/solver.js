@@ -604,12 +604,20 @@ class SolverEngine {
     }
 
     try {
-      if (!window.ClientSideSolver) {
-        throw new Error("Mathematical solver engine is loading. Please try again in a moment.");
+      let data = null;
+      if (window.ApiClient && typeof window.ApiClient.post === "function") {
+        try {
+          data = await ApiClient.post("/solve", { problem });
+        } catch (apiErr) {
+          console.warn("Backend API unavailable or failed, falling back to in-browser solver:", apiErr);
+        }
       }
 
-      // Solve client-side — no backend needed
-      const data = await ClientSideSolver.solve(problem);
+      if (!data || !data.success) {
+        if (window.ClientSideSolver) {
+          data = await ClientSideSolver.solve(problem);
+        }
+      }
 
       if (!data || !data.success) {
         alert((data && data.message) || "Could not process the mathematical solution.");
