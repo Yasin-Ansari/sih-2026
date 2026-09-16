@@ -25,7 +25,6 @@ class SolverEngine {
     const loadingOverlay = document.querySelector("#solverLoadingIndicator");
     if (loadingOverlay) loadingOverlay.classList.remove("hidden");
 
-    // Display loading text indicator above results
     const statusTextEl = document.querySelector("#solverStatusIndicator");
     if (statusTextEl) {
       statusTextEl.textContent = "🤖 AI is solving your problem...";
@@ -39,28 +38,26 @@ class SolverEngine {
     }
 
     try {
-      const data = await ApiClient.post("/solve", { problem });
+      // Solve client-side — no backend needed
+      const data = await ClientSideSolver.solve(problem);
+
       if (!data.success) {
         alert(data.message || "Could not process the mathematical solution.");
         return;
       }
 
-      // Hide loading status text when done
-      if (statusTextEl) {
-        statusTextEl.classList.add("hidden");
-      }
+      if (statusTextEl) statusTextEl.classList.add("hidden");
 
-      // Render Solution in UI
+      // Render Solution in UI (same rendering as before)
       SolverEngine.renderSolution(data, problem);
 
-      // Reload history list if user is logged in
       if (window.HistoryManager) {
         window.HistoryManager.loadHistory();
       }
 
     } catch (err) {
       console.error("Solve error:", err);
-      alert(`Unable to connect to the server: ${err.message}`);
+      alert(`Could not solve: ${err.message}`);
     } finally {
       if (solveBtn) {
         solveBtn.disabled = false;
