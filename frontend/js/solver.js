@@ -16,7 +16,6 @@ class SolverEngine {
                      document.querySelector('button[onclick="executeFormulaRender()"]');
     const originalBtnText = solveBtn ? solveBtn.innerHTML : "✨ Solve Problem";
 
-    // Show Loading State
     if (solveBtn) {
       solveBtn.disabled = true;
       solveBtn.innerHTML = `🤖 AI is solving your problem...`;
@@ -48,7 +47,7 @@ class SolverEngine {
 
       if (statusTextEl) statusTextEl.classList.add("hidden");
 
-      // Render Solution in UI (same rendering as before)
+      // Render Solution in UI
       SolverEngine.renderSolution(data, problem);
 
       if (window.HistoryManager) {
@@ -71,19 +70,25 @@ class SolverEngine {
     if (!str) return "";
     let clean = String(str).replace(/^>\s*/, "").replace(/^>xxx\s*/, "").trim();
     clean = clean.replace(/\\2\s*\+/g, " + ").replace(/\\left\[/g, "[").replace(/\\right\]/g, "]");
+    // Strip any residual HTML attribute/CSS style markup
+    clean = clean.replace(/\d+\s+\d+;\s*background:[^">]+">?/gi, "")
+                 .replace(/padding:[^">]+">?/gi, "")
+                 .replace(/border-radius:[^">]+">?/gi, "")
+                 .replace(/<span[^>]*>/gi, "")
+                 .replace(/<\/span>/gi, "")
+                 .replace(/;\s*font-weight:[^">]+/gi, "");
     return clean;
   }
 
   static renderSolution(data, originalProblem = "") {
     const { problem_analysis, solution_strategy, steps, final_answer, verification, visualization } = data;
 
-    // Container for solution output
     const outputContainer = document.querySelector("#solverOutputArea");
     if (!outputContainer) return;
 
     outputContainer.classList.remove("hidden");
 
-    // 1. Banner Card (Matching Screenshot Image 4)
+    // 1. Banner Card
     const bannerHtml = `
       <div class="bg-[#f0f6ff] border border-[#dbe6ff] rounded-2xl p-6 text-center shadow-2xs space-y-1 mb-6">
         <h2 class="text-2xl font-bold text-slate-800 flex items-center justify-center gap-2">
@@ -95,7 +100,7 @@ class SolverEngine {
       </div>
     `;
 
-    // 2. Understanding the Problem Card (Matching Screenshot Image 4)
+    // 2. Understanding the Problem Card
     let problemAnalysisHtml = "";
     if (problem_analysis) {
       const topic = problem_analysis.topic || "Calculus - Differentiation";
@@ -143,32 +148,48 @@ class SolverEngine {
       `;
     }
 
-    // 3. Step-by-Step Pathway Cards (Matching Screenshots Images 2, 3, 5)
+    // 3. Step-by-Step Pathway Cards
     let stepCardsHtml = "";
     if (steps && steps.length > 0) {
       const cards = steps.map((step, idx) => {
-        const isFinalStep = idx === steps.length - 1 || (step.change_type || "").toLowerCase().includes("final");
-        const borderClass = isFinalStep ? "border-l-[6px] border-[#d97706]" : "border-l-[6px] border-[#2563eb]";
-        const badgeClass = isFinalStep ? "bg-[#fef3c7] text-[#92400e]" : "bg-[#e0e7ff] text-[#3730a3]";
-        
-        let badgeLabel = isFinalStep ? "Final Answer" : (step.change_type || "Formula Application");
-        if (badgeLabel === "formula_application") badgeLabel = "Formula Application";
-        if (badgeLabel === "original") badgeLabel = "Original Expression";
+        const changeType = (step.change_type || "").toLowerCase();
+        const isFinalStep = idx === steps.length - 1 || changeType.includes("final");
+        const isCalcStep = changeType.includes("calculation");
+
+        let borderClass = "border-l-[6px] border-[#2563eb]";
+        let badgeClass = "bg-[#e0e7ff] text-[#3730a3]";
+        let badgeLabel = step.change_type || "Formula Application";
+
+        if (isFinalStep) {
+          borderClass = "border-l-[6px] border-[#d97706]";
+          badgeClass = "bg-[#fef3c7] text-[#92400e]";
+          badgeLabel = "Final Answer";
+        } else if (isCalcStep) {
+          borderClass = "border-l-[6px] border-[#e11d48]";
+          badgeClass = "bg-[#ffe4e6] text-[#9f1239]";
+          badgeLabel = "Calculation";
+        } else if (changeType.includes("original")) {
+          borderClass = "border-l-[6px] border-[#64748b]";
+          badgeClass = "bg-[#f1f5f9] text-[#334155]";
+          badgeLabel = "Original Expression";
+        } else if (badgeLabel === "formula_application") {
+          badgeLabel = "Formula Application";
+        }
 
         const titleText = step.title ? `Step ${step.step_number || idx + 1}: ${step.title}` : `Step ${step.step_number || idx + 1}`;
-        const mainExpr = step.current_expression || step.latex || "";
+        const mainExpr = SolverEngine.cleanMathText(step.current_expression || step.latex || "");
 
         // What changed box
         let whatChangedHtml = "";
         if (step.changes && step.changes.length > 0) {
           const changeItemsHtml = step.changes.map(c => {
             const oldLatex = c.old ? `$${c.old.replace(/^\$/, '').replace(/\$$/, '')}$` : "";
-            const newLatex = c.new ? `<span class="font-bold text-[#2563eb]">$${c.new.replace(/^\$/, '').replace(/\$$/, '')}$</span>` : "";
+            const newLatex = c.new ? `<span class="font-bold text-[#e11d48]">$${c.new.replace(/^\$/, '').replace(/\$$/, '')}$</span>` : "";
             const ruleText = c.reason || c.rule || "";
             return `
-              <div class="space-y-1">
+              <div class="space-y-1 pb-2 border-b border-slate-100 last:border-b-0 last:pb-0">
                 <div class="flex flex-wrap items-center gap-2 font-mono text-xs sm:text-sm">
-                  ${oldLatex ? `<span class="text-slate-500">${oldLatex}</span> <span class="text-slate-400">→</span>` : ""}
+                  ${oldLatex ? `<span class="text-slate-600 font-medium">${oldLatex}</span> <span class="text-slate-400">→</span>` : ""}
                   ${newLatex}
                 </div>
                 ${ruleText ? `<p class="text-xs text-slate-500 font-sans mt-0.5">${SolverEngine.cleanMathText(ruleText)}</p>` : ""}
@@ -177,27 +198,12 @@ class SolverEngine {
           }).join("");
 
           whatChangedHtml = `
-            <div class="bg-[#f0f7ff] border border-blue-100 rounded-2xl p-4 sm:p-5 space-y-2">
+            <div class="bg-[#f4f8ff] border border-blue-100 rounded-2xl p-4 sm:p-5 space-y-3">
               <h4 class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                <span>🔀</span> What changed?
+                <span>🔄</span> What changed?
               </h4>
-              ${changeItemsHtml}
-            </div>
-          `;
-        } else if (step.previous_expression && step.latex) {
-          const oldLatex = `$${step.previous_expression.replace(/^\$/, '').replace(/\$$/, '')}$`;
-          const newLatex = `<span class="font-bold text-[#2563eb]">$${step.latex.replace(/^\$/, '').replace(/\$$/, '')}$</span>`;
-          const ruleText = step.reason || "";
-          whatChangedHtml = `
-            <div class="bg-[#f0f7ff] border border-blue-100 rounded-2xl p-4 sm:p-5 space-y-2">
-              <h4 class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                <span>🔀</span> What changed?
-              </h4>
-              <div class="space-y-1">
-                <div class="flex flex-wrap items-center gap-2 font-mono text-xs sm:text-sm">
-                  <span class="text-slate-500">${oldLatex}</span> <span class="text-slate-400">→</span> ${newLatex}
-                </div>
-                ${ruleText ? `<p class="text-xs text-slate-500 font-sans mt-0.5">${SolverEngine.cleanMathText(ruleText)}</p>` : ""}
+              <div class="space-y-2">
+                ${changeItemsHtml}
               </div>
             </div>
           `;
@@ -207,7 +213,7 @@ class SolverEngine {
         let explanationHtml = "";
         if (step.explanation) {
           explanationHtml = `
-            <div class="bg-slate-50/90 border-l-4 border-slate-400 rounded-xl p-4 space-y-1">
+            <div class="bg-[#f8fafc] border-l-4 border-slate-400 rounded-xl p-4 space-y-1">
               <h4 class="font-bold text-slate-800 text-xs sm:text-sm">Explanation:</h4>
               <p class="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed">${SolverEngine.cleanMathText(step.explanation)}</p>
             </div>
@@ -267,10 +273,10 @@ class SolverEngine {
       `;
     }
 
-    // 4. Final Answer Section (Matching Screenshots Images 1 & 5)
+    // 4. Final Answer Section
     let finalAnswerSectionHtml = "";
     if (final_answer) {
-      const ansString = final_answer.answer || final_answer.latex || "";
+      const ansString = SolverEngine.cleanMathText(final_answer.answer || final_answer.latex || "");
       const ansLatex = final_answer.latex || final_answer.answer || "";
       const ansUnit = final_answer.unit || "";
 
@@ -286,7 +292,7 @@ class SolverEngine {
             </div>
             <div>
               <span class="bg-[#fef3c7] text-[#92400e] border border-[#fde68a] px-3.5 py-1 rounded-lg text-xs font-bold inline-block">
-                Unit: ${ansUnit}
+                Unit: ${ansUnit || "None"}
               </span>
             </div>
           </div>
