@@ -15,6 +15,21 @@
       "dest": "api/index.py"
     },
     {
+      "src": "/js/(.*)",
+      "dest": "frontend/js/$1"
+    },
+    {
+      "src": "/css/(.*)",
+      "dest": "frontend/css/$1"
+    },
+    {
+      "src": "/config.js",
+      "dest": "frontend/config.js"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
       "src": "/(.*)",
       "dest": "frontend/$1"
     }
