@@ -6,35 +6,41 @@
 class PolynomialEngine {
   // Parses a polynomial expression string into terms: [{ coeff, power }]
   static parsePoly(exprStr) {
-    let str = exprStr.replace(/\s+/g, '')
-                     .replace(/y\s*=\s*/gi, '')
-                     .replace(/f\(x\)\s*=\s*/gi, '')
-                     .replace(/\\left/gi, '')
-                     .replace(/\\right/gi, '');
+    if (!exprStr) return [];
+    let str = String(exprStr)
+      .replace(/\s+/g, '')
+      .replace(/y\s*=\s*/gi, '')
+      .replace(/f\(x\)\s*=\s*/gi, '')
+      .replace(/\\left/gi, '')
+      .replace(/\\right/gi, '');
 
     if (!str.startsWith('+') && !str.startsWith('-')) str = '+' + str;
 
-    const termRegex = /([+-]\s*\d*(?:\.\d+)?)(?:x(?:\^(\d+))?)?/gi;
+    // Split polynomial by + or - keeping the sign attached
+    const matches = str.match(/[+-][^+-]+/g);
+    if (!matches) return [];
+
     const terms = [];
-    let match;
+    matches.forEach(rawTerm => {
+      const match = rawTerm.match(/^([+-]?\d*(?:\.\d+)?)(?:x(?:\^(\d+))?)?$/i);
+      if (match) {
+        let rawCoeff = match[1];
+        let coeff = 0;
+        if (rawCoeff === '+' || rawCoeff === '' || rawCoeff === undefined) coeff = 1;
+        else if (rawCoeff === '-') coeff = -1;
+        else coeff = parseFloat(rawCoeff);
 
-    while ((match = termRegex.exec(str)) !== null) {
-      if (match[0] === '') break;
-      let rawCoeff = match[1].replace(/\s+/g, '');
-      let coeff = 0;
-      if (rawCoeff === '+' || rawCoeff === '') coeff = 1;
-      else if (rawCoeff === '-') coeff = -1;
-      else coeff = parseFloat(rawCoeff);
+        let power = 0;
+        if (rawTerm.toLowerCase().includes('x')) {
+          power = match[2] ? parseInt(match[2], 10) : 1;
+        }
 
-      let power = 0;
-      if (match[0].toLowerCase().includes('x')) {
-        power = match[2] ? parseInt(match[2], 10) : 1;
+        if (!isNaN(coeff) && coeff !== 0) {
+          terms.push({ coeff, power });
+        }
       }
+    });
 
-      if (!isNaN(coeff) && coeff !== 0) {
-        terms.push({ coeff, power });
-      }
-    }
     return terms;
   }
 
