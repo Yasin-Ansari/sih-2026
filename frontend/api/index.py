@@ -1,16 +1,17 @@
-import sys
 import os
+import sys
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-root_dir = os.path.dirname(parent_dir)
+FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(FILE_DIR)
 
-sys.path.insert(0, root_dir)
-sys.path.insert(0, parent_dir)
-sys.path.insert(0, os.path.join(parent_dir, "backend"))
-sys.path.insert(0, os.path.join(root_dir, "backend"))
+if os.path.basename(PARENT_DIR) == "frontend":
+    ROOT_DIR = os.path.dirname(PARENT_DIR)
+else:
+    ROOT_DIR = PARENT_DIR
 
-try:
-    from backend.app.main import app
-except ImportError:
-    from app.main import app
+BACKEND_DIR = os.path.join(ROOT_DIR, "backend")
+
+sys.path.insert(0, ROOT_DIR)
+sys.path.insert(0, BACKEND_DIR)
+
+from backend.app.main import app
