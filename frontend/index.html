@@ -1534,18 +1534,24 @@ function onParamSliderChange() {
 }
 
 function updateLiveFormulaLatex() {
-  const aVal = parseFloat(document.getElementById('paramA').value) || 3.0;
-  const bVal = parseFloat(document.getElementById('paramB').value) || 5.0;
-  const raw = document.getElementById('mainFormulaInput').value.trim();
+  const paramAEl = document.getElementById('paramA');
+  const paramBEl = document.getElementById('paramB');
+  const inputEl = document.getElementById('mainFormulaInput');
   const preview = document.getElementById('liveFormulaRender');
+  const selectEl = document.getElementById('graphPresetSelect');
 
-  // Look up if an exact preset matches
-  const selKey = document.getElementById('graphPresetSelect').value;
-  if (formulaPresets[selKey] && formulaPresets[selKey].rawFormula.replace(/\s+/g, '') === raw.replace(/\s+/g, '')) {
+  if (!inputEl || !preview) return;
+
+  const aVal = paramAEl ? (parseFloat(paramAEl.value) || 3.0) : 3.0;
+  const bVal = paramBEl ? (parseFloat(paramBEl.value) || 5.0) : 5.0;
+  const raw = inputEl.value ? inputEl.value.trim() : "";
+  if (!raw) return;
+
+  const selKey = selectEl ? selectEl.value : "";
+  if (selKey && typeof formulaPresets !== 'undefined' && formulaPresets[selKey] && formulaPresets[selKey].rawFormula.replace(/\s+/g, '') === raw.replace(/\s+/g, '')) {
     const p = formulaPresets[selKey];
     preview.innerHTML = `$$${p.latex(aVal, bVal)}$$`;
   } else {
-    // Generate clean mathematical string from custom input
     let clean = raw
       .replace(/\ba\b/g, aVal.toFixed(1))
       .replace(/\bb\b/g, bVal.toFixed(1))
@@ -1557,11 +1563,11 @@ function updateLiveFormulaLatex() {
       .replace(/exp\((.*?)\)/g, 'e^{$1}')
       .replace(/sqrt\((.*?)\)/g, '\\sqrt{$1}');
     
-    const prefix = currentVisDimension === '3d' ? 'z' : 'y';
+    const prefix = (typeof currentVisDimension !== 'undefined' && currentVisDimension === '3d') ? 'z' : 'y';
     preview.innerHTML = `$$${prefix} = ${clean}$$`;
   }
 
-  renderAllMath(preview);
+  if (typeof renderAllMath === 'function') renderAllMath(preview);
 }
 
 function executeFormulaRender() {
