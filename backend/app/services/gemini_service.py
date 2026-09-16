@@ -107,10 +107,11 @@ class GeminiService:
 
         # Problem classification
         prob_lower = prob_clean.lower()
-        is_diff = any(k in prob_lower for k in ["differentiate", "derivative", "d/dx"])
-        is_int = any(k in prob_lower for k in ["integrate", "integral", "∫"])
-        is_eq = "=" in prob_clean or "solve" in prob_lower
         is_3d = "z" in prob_lower and "y" in prob_lower
+        is_diff = any(k in prob_lower for k in ["differentiate", "derivative", "d/dx", "dy/dx", "diff"])
+        is_int = any(k in prob_lower for k in ["integrate", "integral", "∫", "\\int", "int "])
+        is_eq = ("=" in prob_clean or "solve" in prob_lower) and not is_3d
+
 
         steps = []
         topic = "General Mathematics"
@@ -262,7 +263,7 @@ class GeminiService:
             elif is_int:
                 topic = "Calculus - Integration"
                 find_target = "Indefinite Antiderivative ∫ f(x) dx"
-                raw_expr = re.sub(r'(?i)integrate|integral of|∫', '', prob_clean).strip()
+                raw_expr = re.sub(r'(?i)integrate|integral of|find|\\?int|∫', '', prob_clean).strip()
                 raw_expr = re.sub(r'(?i)dx$', '', raw_expr).strip().lstrip('(').rstrip(')')
                 parsed = sp.sympify(MathService._fix_implicit_mult(raw_expr))
                 int_res = sp.integrate(parsed, x)
@@ -521,7 +522,7 @@ class GeminiService:
             )
 
         prompt = f"Solve and explain this mathematical problem thoroughly with step-by-step reasoning: '{problem}'"
-        models_to_try = ["gemini-3.6-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-exp"]
+        models_to_try = ["gemini-3.6-flash", "gemini-3.1-pro-preview", "gemini-2.0-flash-exp"]
 
         for model_name in models_to_try:
             try:

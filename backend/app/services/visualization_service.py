@@ -26,13 +26,26 @@ RANDOM_FORMULAS_3D = [
 
 class VisualizationService:
     @staticmethod
+    def _clean_latex_for_sympy(expr_str: str) -> str:
+        s = str(expr_str).strip()
+        s = re.sub(r'^(?:\\frac\{dy\}\{dx\}|dy/dx|y\'|y|z|f\s*\([^\)]*\)|\\int[^=]*)\s*=\s*', '', s, flags=re.IGNORECASE)
+        s = re.sub(r'\\int', '', s)
+        s = re.sub(r'dx$', '', s, flags=re.IGNORECASE)
+        s = re.sub(r'\+\s*C$', '', s, flags=re.IGNORECASE)
+        s = re.sub(r'\^\{([^}]+)\}', r'**(\1)', s)
+        s = re.sub(r'\^([0-9a-zA-Z]+)', r'**\1', s)
+        s = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1)/(\2)', s)
+        s = re.sub(r'\\(?:left|right|cdot|times)', '', s)
+        return s.strip()
+
+    @staticmethod
     def generate_2d_plot(expr_str: str, x_min: float = -10.0, x_max: float = 10.0, points: int = 100) -> Dict[str, Any]:
         """
         Generates 2D (x, y) numerical coordinates safely using SymPy & NumPy.
         """
         try:
             x_sym = sp.Symbol('x')
-            clean_str = re.sub(r'^(?:y|z|f\s*\([^\)]*\))\s*=\s*', '', expr_str.strip(), flags=re.IGNORECASE)
+            clean_str = VisualizationService._clean_latex_for_sympy(expr_str)
             formatted_expr = MathService._fix_implicit_mult(clean_str)
             sym_expr = sp.sympify(formatted_expr)
 
@@ -71,7 +84,7 @@ class VisualizationService:
         """
         try:
             x_sym, y_sym = sp.symbols('x y')
-            clean_str = re.sub(r'^(?:z|y|f\s*\([^\)]*\))\s*=\s*', '', expr_str.strip(), flags=re.IGNORECASE)
+            clean_str = VisualizationService._clean_latex_for_sympy(expr_str)
             formatted_expr = MathService._fix_implicit_mult(clean_str)
             sym_expr = sp.sympify(formatted_expr)
 

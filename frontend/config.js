@@ -1,5 +1,12 @@
 // ============================================================
-// DEPLOYMENT CONFIG - Update BACKEND_URL after deploying backend
+// DEPLOYMENT CONFIG - Dynamic Backend URL Resolver
 // ============================================================
-window.LOCATION_BACKEND_URL = "https://sih-2026-backend-production-3b66.up.railway.app/api";
-// ^ Replace with your actual Render backend URL after deployment
+const isLocalhost = window.location.hostname === "localhost" || 
+                    window.location.hostname === "127.0.0.1" || 
+                    window.location.protocol === "file:";
+
+window.LOCATION_BACKEND_URL = isLocalhost 
+  ? "http://localhost:8000/api" 
+  : (window.location.origin ? `${window.location.origin}/api` : "/api");
+
+
