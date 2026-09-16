@@ -37,11 +37,15 @@ class SolverEngine {
     }
 
     try {
+      if (!window.ClientSideSolver) {
+        throw new Error("Mathematical solver engine is loading. Please try again in a moment.");
+      }
+
       // Solve client-side — no backend needed
       const data = await ClientSideSolver.solve(problem);
 
-      if (!data.success) {
-        alert(data.message || "Could not process the mathematical solution.");
+      if (!data || !data.success) {
+        alert((data && data.message) || "Could not process the mathematical solution.");
         return;
       }
 
@@ -50,13 +54,17 @@ class SolverEngine {
       // Render Solution in UI
       SolverEngine.renderSolution(data, problem);
 
-      if (window.HistoryManager) {
-        window.HistoryManager.loadHistory();
+      if (window.HistoryManager && typeof window.HistoryManager.loadHistory === "function") {
+        try {
+          window.HistoryManager.loadHistory();
+        } catch (hErr) {
+          console.warn("History refresh skipped:", hErr);
+        }
       }
 
     } catch (err) {
       console.error("Solve error:", err);
-      alert(`Could not solve: ${err.message}`);
+      alert(`Could not solve problem: ${err.message || err}`);
     } finally {
       if (solveBtn) {
         solveBtn.disabled = false;
