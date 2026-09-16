@@ -84,6 +84,13 @@ class VisualizationExplorer {
   }
 
   static async fetchRandomFormula() {
+    const presets = [
+      { formula: "sin(sqrt(x^2 + y^2))", type: "3d" },
+      { formula: "x^2 - y^2", type: "3d" },
+      { formula: "cos(x) * sin(y)", type: "3d" },
+      { formula: "a * sin(b * x)", type: "2d" },
+      { formula: "x^3 - 3*x", type: "2d" }
+    ];
     try {
       const data = await ApiClient.get("/random-formula");
       if (data && data.formula) {
@@ -92,10 +99,15 @@ class VisualizationExplorer {
         if (window.switchVisDimension) {
           window.switchVisDimension(data.type || "3d");
         }
+        return;
       }
     } catch (e) {
-      console.error("Random formula error:", e);
+      console.warn("Using offline visualization formula preset.");
     }
+    const item = presets[Math.floor(Math.random() * presets.length)];
+    const input = document.querySelector("#mainFormulaInput");
+    if (input) input.value = item.formula;
+    if (window.switchVisDimension) window.switchVisDimension(item.type);
   }
 }
 

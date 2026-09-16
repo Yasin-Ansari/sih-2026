@@ -55,13 +55,14 @@ class ApiClient {
       headers
     };
 
+    const isLocal = window.location.hostname === "localhost" || 
+                    window.location.hostname === "127.0.0.1" || 
+                    window.location.protocol === "file:";
+
     // Candidate URLs to attempt in order
     const urlsToTry = [primaryUrl];
-    if (!primaryUrl.includes("localhost:8000")) {
+    if (isLocal && !primaryUrl.includes("localhost:8000")) {
       urlsToTry.push(`http://localhost:8000/api${endpoint}`);
-    }
-    if (!primaryUrl.endsWith(`/api${endpoint}`) && window.location.origin) {
-      urlsToTry.push(`${window.location.origin}/api${endpoint}`);
     }
 
     let lastError = null;
@@ -79,7 +80,6 @@ class ApiClient {
       } catch (err) {
         lastError = err;
         console.warn(`API attempt failed on [${options.method || "GET"} ${targetUrl}]:`, err);
-        // If it's an explicit HTTP status error (e.g. 400, 401, 404), don't try other hosts
         if (err.message && err.message.includes("Server Error")) {
           throw err;
         }
@@ -87,7 +87,10 @@ class ApiClient {
     }
 
     console.error(`All API endpoints failed for [${options.method || "GET"} ${endpoint}]`);
-    throw lastError || new Error("Failed to connect to backend server.");
+    const cleanError = (lastError && lastError.message && !lastError.message.includes("Failed to fetch"))
+      ? lastError.message
+      : "Backend service currently unavailable.";
+    throw new Error(cleanError);
   }
 
   static get(endpoint) {

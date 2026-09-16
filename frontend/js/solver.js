@@ -377,16 +377,27 @@ class SolverEngine {
   }
 
   static async fetchRandomFormula() {
+    const presets = [
+      "differentiate y = 3x^4 - 5x^3 + 2x^2 - 7x + 4",
+      "integrate 6x^2 + 4x - 5",
+      "solve 2x^2 + 5x - 3 = 0",
+      "z = sin(x) * cos(y)",
+      "differentiate y = sin(x) * e^x",
+      "solve x^2 - 4 = 0"
+    ];
     try {
       const data = await ApiClient.get("/random-formula");
       if (data && data.formula) {
         const textarea = document.querySelector("#solverInputArea") || document.querySelector("#mainFormulaInput");
         if (textarea) textarea.value = data.formula;
-        alert(`Loaded random formula (${data.category}): ${data.formula}`);
+        return;
       }
     } catch (e) {
-      console.error("Random formula error:", e);
+      console.warn("Using offline random formula preset.");
     }
+    const formula = presets[Math.floor(Math.random() * presets.length)];
+    const textarea = document.querySelector("#solverInputArea") || document.querySelector("#mainFormulaInput");
+    if (textarea) textarea.value = formula;
   }
 }
 
