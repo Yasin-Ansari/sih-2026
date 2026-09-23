@@ -45,11 +45,6 @@ class SolverEngine {
         return;
       }
 
-      // Hide loading status text when done
-      if (statusTextEl) {
-        statusTextEl.classList.add("hidden");
-      }
-
       // Render Solution in UI
       SolverEngine.renderSolution(data, problem);
 
@@ -62,6 +57,9 @@ class SolverEngine {
       console.error("Solve error:", err);
       alert(`Unable to connect to the server: ${err.message}`);
     } finally {
+      if (statusTextEl) {
+        statusTextEl.classList.add("hidden");
+      }
       if (solveBtn) {
         solveBtn.disabled = false;
         solveBtn.innerHTML = originalBtnText;
@@ -101,18 +99,18 @@ class SolverEngine {
     // 2. Understanding the Problem Card (Matching Screenshot Image 4)
     let problemAnalysisHtml = "";
     if (problem_analysis) {
-      const topic = problem_analysis.topic || "Calculus - Differentiation";
-      const findText = problem_analysis.find || "The derivative of y with respect to x (dy/dx)";
+      const topic = problem_analysis.topic || "General Mathematics";
+      const findText = problem_analysis.find || "";
       
       const givenList = Array.isArray(problem_analysis.given_information) && problem_analysis.given_information.length > 0
         ? problem_analysis.given_information
-        : ["Function: " + (originalProblem || "y = 3x^4 - 5x^3 + 2x^2 - 7x + 4")];
+        : (originalProblem ? [originalProblem] : []);
       
       const givenItems = givenList.map(item => `<li><span class="font-medium text-slate-800">${SolverEngine.cleanMathText(item)}</span></li>`).join("");
 
       const varList = Array.isArray(problem_analysis.variables) && problem_analysis.variables.length > 0
         ? problem_analysis.variables
-        : ["x", "y"];
+        : ["x"];
       const varItems = varList.map(v => `<li><span class="font-mono text-slate-800">${v}</span></li>`).join("");
 
       problemAnalysisHtml = `
@@ -121,26 +119,10 @@ class SolverEngine {
             <span>🔍</span> Understanding the Problem
           </h3>
           <div class="bg-white border border-[#e2e8f0] rounded-2xl p-6 sm:p-8 space-y-4 shadow-2xs">
-            <div>
-              <span class="font-bold text-slate-900">Topic: </span>
-              <span class="text-slate-800 font-medium">${topic}</span>
-            </div>
-            <div>
-              <span class="font-bold text-slate-900">Find: </span>
-              <span class="text-slate-800 font-medium">${findText}</span>
-            </div>
-            <div>
-              <span class="font-bold text-slate-900 block mb-1">Given Information</span>
-              <ul class="list-disc pl-5 space-y-1 text-slate-700 text-sm">
-                ${givenItems}
-              </ul>
-            </div>
-            <div>
-              <span class="font-bold text-slate-900 block mb-1">Variables</span>
-              <ul class="list-disc pl-5 space-y-1 text-slate-700 text-sm">
-                ${varItems}
-              </ul>
-            </div>
+            ${topic ? `<div><span class="font-bold text-slate-900">Topic: </span><span class="text-slate-800 font-medium">${topic}</span></div>` : ""}
+            ${findText ? `<div><span class="font-bold text-slate-900">Find: </span><span class="text-slate-800 font-medium">${findText}</span></div>` : ""}
+            ${givenItems ? `<div><span class="font-bold text-slate-900 block mb-1">Given Information</span><ul class="list-disc pl-5 space-y-1 text-slate-700 text-sm">${givenItems}</ul></div>` : ""}
+            ${varItems ? `<div><span class="font-bold text-slate-900 block mb-1">Variables</span><ul class="list-disc pl-5 space-y-1 text-slate-700 text-sm">${varItems}</ul></div>` : ""}
           </div>
         </div>
       `;
@@ -287,11 +269,7 @@ class SolverEngine {
             <div class="text-2xl sm:text-3xl font-extrabold text-[#92400e] font-mono">
               ${ansString}
             </div>
-            <div>
-              <span class="bg-[#fef3c7] text-[#92400e] border border-[#fde68a] px-3.5 py-1 rounded-lg text-xs font-bold inline-block">
-                Unit: ${ansUnit}
-              </span>
-            </div>
+            ${ansUnit ? `<div><span class="bg-[#fef3c7] text-[#92400e] border border-[#fde68a] px-3.5 py-1 rounded-lg text-xs font-bold inline-block">Unit: ${ansUnit}</span></div>` : ""}
           </div>
 
           <!-- Final Mathematical Form -->

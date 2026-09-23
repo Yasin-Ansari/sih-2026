@@ -1,19 +1,32 @@
 import os
+import sys
+import re
 
-with open('js/solver.js', 'r', encoding='utf-8') as f:
+SCRATCH_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRATCH_DIR)
+
+solver_path = os.path.join(ROOT_DIR, 'js', 'solver.js')
+with open(solver_path, 'r', encoding='utf-8') as f:
     solver_code = f.read()
 
-target = '  <script src="js/solver.js?v=2.2.0"></script>'
 replacement = '  <script>\n/* Embedded Solver Engine */\n' + solver_code + '\n</script>'
+script_pattern = re.compile(r'  <script\s+src="js/solver\.js(?:\?[^"]*)?"></script>')
 
-for filepath in ['index.html', 'frontend/index.html']:
+targets = [os.path.join(ROOT_DIR, 'index.html'), os.path.join(ROOT_DIR, 'frontend', 'index.html')]
+error_occurred = False
+
+for filepath in targets:
     if os.path.exists(filepath):
         with open(filepath, 'r', encoding='utf-8') as f:
             html = f.read()
-        if target in html:
-            html = html.replace(target, replacement)
+        if script_pattern.search(html):
+            html = script_pattern.sub(replacement, html)
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(html)
             print(f'Successfully embedded solver into {filepath}')
         else:
-            print(f'Target not found in {filepath}')
+            print(f'Error: Target solver script reference absent in {filepath}', file=sys.stderr)
+            error_occurred = True
+
+if error_occurred:
+    sys.exit(1)

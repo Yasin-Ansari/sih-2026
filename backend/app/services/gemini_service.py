@@ -17,7 +17,8 @@ CRITICAL REQUIREMENTS:
 2. DO NOT wrap the JSON in markdown triple backticks like ```json ... ``` unless forced, but raw clean JSON string is preferred.
 3. Teach the student: Every transformation must explain what changed, why it changed, and why it's necessary.
 4. Provide valid LaTeX for formulas and mathematical steps without HTML or raw code tags.
-5. Identify the appropriate change_type for each step from:
+5. In final_answer.answer and final_answer.latex, write ONLY the evaluated mathematical result (e.g., "-cos(x) + sin(x) + C" for integral of sin(x)+cos(x), "2x + 3" for derivative of x^2+3x, "x = 5" for 2x+5=15). NEVER copy or repeat the problem statement prompt (such as "Integrate: ..." or "Differentiate: ...").
+6. Identify the appropriate change_type for each step from:
    - original
    - formula_application
    - substitution
@@ -35,7 +36,7 @@ CRITICAL REQUIREMENTS:
    - integration
    - final_answer
 
-6. Recommend visualization mode: "2d", "3d", "both", or "none". Provide a clean formula LaTeX for graph rendering.
+7. Recommend visualization mode: "2d", "3d", "both", or "none". Provide a clean formula LaTeX for graph rendering.
 
 JSON SCHEMA:
 {
