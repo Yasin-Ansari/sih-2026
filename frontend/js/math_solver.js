@@ -12,7 +12,8 @@ class PolynomialEngine {
       .replace(/y\s*=\s*/gi, '')
       .replace(/f\(x\)\s*=\s*/gi, '')
       .replace(/\\left/gi, '')
-      .replace(/\\right/gi, '');
+      .replace(/\\right/gi, '')
+      .replace(/[\(\)]/g, '');
 
     if (!str.startsWith('+') && !str.startsWith('-')) str = '+' + str;
 
@@ -507,8 +508,21 @@ class ClientSideSolver {
       }
 
       /* ===== 4. GENERAL EVALUATION ===== */
+      let evalAns = null;
+      const m = ClientSideSolver._m();
+      if (m && typeof m.evaluate === 'function') {
+        try {
+          const val = m.evaluate(raw);
+          if (val !== undefined && typeof val !== 'function' && typeof val !== 'object') {
+            evalAns = String(val);
+          } else if (val && typeof val.toString === 'function') {
+            evalAns = val.toString();
+          }
+        } catch (e) {}
+      }
+
       const terms = PolynomialEngine.parsePoly(raw);
-      const simpLatex = terms.length > 0 ? PolynomialEngine.polyToLatex(terms) : raw;
+      let simpLatex = evalAns !== null ? evalAns : (terms.length > 0 ? PolynomialEngine.polyToLatex(terms) : raw);
       const plot2d = ClientSideSolver._plot2d(raw);
 
       return {

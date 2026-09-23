@@ -12,7 +12,7 @@ The AI Mathematics Visual Solver is an academic problem-solving platform combini
 #### 2.1 AI Mathematical Reasoning & Breakdown Engine
 - **Input**: Natural language or algebraic math problem (e.g. calculus, algebra, trigonometry, coordinate geometry, multivariable functions).
 - **Processing**:
-  - Invokes Google Gemini 2.5 AI for step-by-step reasoning.
+  - Invokes Google Gemini 3.6 AI for step-by-step reasoning.
   - Categorizes each step (`formula_application`, `substitution`, `differentiation`, `simplification`, `cancellation`).
   - Explains *what* changed, *why* it changed, and *why* it is necessary.
 - **Verification**: Evaluates symbolic equality using SymPy (`verified`, `partially_verified`, `unable_to_verify`).

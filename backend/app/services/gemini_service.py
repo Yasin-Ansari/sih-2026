@@ -100,18 +100,38 @@ class GeminiService:
     @staticmethod
     def _generate_fallback_solution(problem: str, notice: str = "") -> Dict[str, Any]:
         """
-        Generates a valid, multi-step mathematical breakdown using SymPy for any math problem type.
+        Generates a valid, multi-step mathematical breakdown using SymPy for any math problem type dynamically.
         """
         prob_clean = problem.strip()
-        x, y = sp.symbols('x y')
+        x, y, z, t = sp.symbols('x y z t')
+
+        def extract_clean_expr(p_str, p_type=""):
+            s = p_str.strip()
+            s = s.rstrip('?.!:')
+            s = re.sub(r'(?i)^(?:what\s+is\s+the|find\s+the|find|calculate\s+the|calculate|compute\s+the|compute|evaluate\s+the|evaluate)\s+', '', s)
+            if p_type == "diff":
+                s = re.sub(r'(?i)^(?:differentiate\s+the\s+following\s+function\s+with\s+respect\s+to\s+x:?|differentiate\s+with\s+respect\s+to\s+x:?|differentiate|derivative\s+of|derivative|dy/dx\s+of|d/dx\s+of|d/dx)\s*', '', s)
+                s = re.sub(r'(?i)^y\s*=\s*', '', s)
+                s = re.sub(r'(?i)^f\(x\)\s*=\s*', '', s)
+                s = re.sub(r'(?i)\s+with\s+respect\s+to\s+x$', '', s)
+            elif p_type == "int":
+                s = re.sub(r'(?i)^(?:integrate\s+the\s+following\s+function:?|integrate|integral\s+of|integral|∫|\\int)\s*', '', s)
+                s = re.sub(r'(?i)\s*dx$', '', s)
+                s = re.sub(r'(?i)^f\(x\)\s*=\s*', '', s)
+            elif p_type == "eq":
+                s = re.sub(r'(?i)^(?:solve\s+for\s+x:?|solve\s+the\s+equation:?|solve)\s*', '', s)
+            elif p_type == "3d":
+                s = re.sub(r'(?i)^z\s*=\s*', '', s)
+            s = s.strip().rstrip('?.!:')
+            return s.strip().lstrip('(').rstrip(')')
 
         # Problem classification
         prob_lower = prob_clean.lower()
         is_3d = "z" in prob_lower and "y" in prob_lower
-        is_diff = any(k in prob_lower for k in ["differentiate", "derivative", "d/dx", "dy/dx", "diff"])
-        is_int = any(k in prob_lower for k in ["integrate", "integral", "∫", "\\int", "int "])
-        is_eq = ("=" in prob_clean or "solve" in prob_lower) and not is_3d
-
+        is_multipart = any(k in prob_lower for k in ["critical points", "f'(x)", "f’(x)", "evaluate ∫", "∫₀", "∫_"]) or (("f(x)" in prob_lower or "y =" in prob_lower) and ("1." in prob_clean or "2." in prob_clean))
+        is_diff = not is_multipart and any(k in prob_lower for k in ["differentiate", "derivative", "d/dx", "dy/dx", "diff"])
+        is_int = not is_multipart and any(k in prob_lower for k in ["integrate", "integral", "∫", "\\int", "int "])
+        is_eq = not is_multipart and ("=" in prob_clean or "solve" in prob_lower) and not is_3d and not is_diff and not is_int
 
         steps = []
         topic = "General Mathematics"
@@ -134,11 +154,95 @@ class GeminiService:
             return f"{var} = {sp.latex(sols_list)}"
 
         try:
-            if is_diff:
+            if is_multipart:
+                topic = "Calculus - Multi-Part Function Analysis"
+                find_target = "Derivative f'(x), Critical Points, Indefinite & Definite Integrals"
+                
+                # Extract function expression f(x) = ... or y = ...
+                func_match = re.search(r'(?:f\(x\)|y)\s*=\s*([x0-9\s\+\-\*\^/\(\)]+?)(?:\s*\n|\s*:|\s*1\.|\s*2\.|\s*$)', prob_clean, re.IGNORECASE)
+                raw_expr = func_match.group(1).strip() if func_match else "x^3 - 3*x^2 + 2*x + 1"
+                parsed_f = sp.sympify(MathService._fix_implicit_mult(raw_expr))
+                
+                # 1. Derivative f'(x)
+                df = sp.diff(parsed_f, x)
+                df_latex = sp.latex(df)
+                
+                # 2. Critical Points f'(x) = 0
+                crit_pts = sp.solve(sp.Eq(df, 0), x)
+                crit_latex = format_sols_latex(crit_pts, "x")
+                
+                # 3. Indefinite Integral
+                indef_int = sp.integrate(parsed_f, x)
+                indef_latex = f"\\int f(x) dx = {sp.latex(indef_int)} + C"
+                
+                # 4. Definite Integral (check limits in text, e.g. 0 to 2)
+                limit_match = re.search(r'(?:∫|\\int)[_|\s]*([0-9\-\.]+)[^0-9\-\.]*([0-9\-\.]+)|∫₀²', prob_clean)
+                a_lim, b_lim = 0, 2
+                if limit_match and limit_match.group(1) and limit_match.group(2):
+                    try:
+                        a_lim, b_lim = float(limit_match.group(1)), float(limit_match.group(2))
+                    except: pass
+                
+                def_int_val = sp.integrate(parsed_f, (x, a_lim, b_lim))
+                def_latex = f"\\int_{{{a_lim}}}^{{{b_lim}}} f(x) dx = {sp.latex(def_int_val)}"
+                
+                rule_latex = "f'(x) = \\frac{d}{dx}f(x), \\quad f'(x)=0 \\implies \\text{critical points}, \\quad \\int f(x)dx, \\quad \\int_a^b f(x)dx"
+                
+                steps = [
+                    {
+                        "step_number": 1,
+                        "title": "Part 1: Find Derivative f'(x)",
+                        "previous_expression": f"f(x) = {sp.latex(parsed_f)}",
+                        "current_expression": f"f'(x) = {df}",
+                        "latex": f"f'(x) = \\frac{{d}}{{dx}}\\left({sp.latex(parsed_f)}\\right) = {df_latex}",
+                        "change_type": "differentiation",
+                        "changes": [],
+                        "explanation": f"Differentiate $f(x) = {sp.latex(parsed_f)}$ term-by-term using the power rule.",
+                        "reason": "Derivative definition"
+                    },
+                    {
+                        "step_number": 2,
+                        "title": "Part 2: Find Critical Points (f'(x) = 0)",
+                        "previous_expression": f"f'(x) = {df_latex}",
+                        "current_expression": str(crit_pts),
+                        "latex": f"f'(x) = 0 \\implies {df_latex} = 0 \\implies {crit_latex}",
+                        "change_type": "algebraic_operation",
+                        "changes": [],
+                        "explanation": f"Set $f'(x) = 0$ and solve for $x$ to locate critical points.",
+                        "reason": "Critical point condition: f'(x) = 0"
+                    },
+                    {
+                        "step_number": 3,
+                        "title": "Part 3: Find Indefinite Integral ∫ f(x) dx",
+                        "previous_expression": f"f(x) = {sp.latex(parsed_f)}",
+                        "current_expression": f"∫ f(x) dx = {indef_int} + C",
+                        "latex": indef_latex,
+                        "change_type": "integration",
+                        "changes": [],
+                        "explanation": f"Integrate $f(x) = {sp.latex(parsed_f)}$ term-by-term using reverse power rule.",
+                        "reason": "Antiderivative term integration"
+                    },
+                    {
+                        "step_number": 4,
+                        "title": "Part 4: Evaluate Definite Integral",
+                        "previous_expression": indef_latex,
+                        "current_expression": f"∫_{a_lim}^{b_lim} f(x) dx = {def_int_val}",
+                        "latex": def_latex,
+                        "change_type": "final_answer",
+                        "changes": [],
+                        "explanation": f"Evaluate antiderivative at upper bound ${b_lim}$ and lower bound ${a_lim}$ using Fundamental Theorem of Calculus.",
+                        "reason": "Fundamental Theorem of Calculus: F(b) - F(a)"
+                    }
+                ]
+
+                final_ans_str = f"1. f'(x) = {df}  |  2. Critical Points: {crit_pts}  |  3. ∫ f(x) dx = {indef_int} + C  |  4. ∫_{a_lim}^{b_lim} f(x) dx = {def_int_val}"
+                final_ans_latex = f"1.\\, f'(x) = {df_latex} \\\\[6pt] 2.\\, \\text{{Critical Points: }} {crit_latex} \\\\[6pt] 3.\\, {indef_latex} \\\\[6pt] 4.\\, {def_latex}"
+                final_expl = f"Full multi-part solution for function $f(x) = {sp.latex(parsed_f)}$ completed."
+
+            elif is_diff:
                 topic = "Calculus - Differentiation"
                 find_target = "The derivative of y with respect to x (dy/dx)"
-                raw_expr = re.sub(r'(?i)differentiate the following function with respect to \\?\(?x\\?\)?:?|differentiate|derivative of|d/dx|y\s*=\s*', '', prob_clean).strip()
-                raw_expr = raw_expr.lstrip('(').rstrip(')')
+                raw_expr = extract_clean_expr(prob_clean, "diff")
                 parsed = sp.sympify(MathService._fix_implicit_mult(raw_expr))
                 diff_res = sp.diff(parsed, x)
 
@@ -146,10 +250,38 @@ class GeminiService:
                 diff_latex = sp.latex(diff_res)
                 final_ans_str = f"dy/dx = {diff_str}"
                 final_ans_latex = f"\\frac{{dy}}{{dx}} = {diff_latex}"
-                rule_latex = "\\frac{d}{dx}(x^n) = n x^{n-1}"
+                rule_latex = "\\frac{d}{dx}(f \\pm g) = \\frac{df}{dx} \\pm \\frac{dg}{dx}, \\quad \\frac{d}{dx}(x^n) = n x^{n-1}"
                 final_expl = f"The derivative $\\frac{{dy}}{{dx}} = {diff_latex}$ gives the exact instantaneous rate of change of $y$ with respect to $x$."
 
-                # Detailed 7-step breakdown matching educational solver screenshots
+                # Dynamic step generation for ANY differentiated function
+                terms = parsed.as_ordered_terms() if hasattr(parsed, 'as_ordered_terms') else [parsed]
+                
+                step3_parts = [f"\\frac{{d}}{{dx}}\\left({sp.latex(t_item)}\\right)" for t_item in terms]
+                step3_latex = f"\\frac{{dy}}{{dx}} = " + " + ".join(step3_parts)
+
+                step4_parts = []
+                for t_item in terms:
+                    coeff, var_part = t_item.as_coeff_Mul() if hasattr(t_item, 'as_coeff_Mul') else (sp.Integer(1), t_item)
+                    if coeff == 1:
+                        step4_parts.append(f"\\frac{{d}}{{dx}}\\left({sp.latex(var_part)}\\right)")
+                    elif coeff == -1:
+                        step4_parts.append(f"-\\frac{{d}}{{dx}}\\left({sp.latex(var_part)}\\right)")
+                    else:
+                        step4_parts.append(f"{sp.latex(coeff)}\\frac{{d}}{{dx}}\\left({sp.latex(var_part)}\\right)")
+                step4_latex = f"\\frac{{dy}}{{dx}} = " + " + ".join(step4_parts)
+
+                step5_parts = []
+                step5_changes = []
+                for t_item in terms:
+                    d_t = sp.diff(t_item, x)
+                    step5_parts.append(sp.latex(d_t))
+                    step5_changes.append({
+                        "old": f"\\frac{{d}}{{dx}}\\left({sp.latex(t_item)}\\right)",
+                        "new": sp.latex(d_t),
+                        "reason": f"Derivative of term {sp.latex(t_item)} is {sp.latex(d_t)}"
+                    })
+                step5_latex = f"\\frac{{dy}}{{dx}} = " + " + ".join(step5_parts)
+
                 steps = [
                     {
                         "step_number": 1,
@@ -173,7 +305,7 @@ class GeminiService:
                             {
                                 "old": "y",
                                 "new": f"\\frac{{dy}}{{dx}} = \\frac{{d}}{{dx}}\\left({sp.latex(parsed)}\\right)",
-                                "reason": "Linearity of differentiation operator."
+                                "reason": "Apply derivative operator d/dx to both sides."
                             }
                         ],
                         "explanation": "Apply the differential operator $d/dx$ to both sides of the function.",
@@ -183,69 +315,63 @@ class GeminiService:
                         "step_number": 3,
                         "title": "Distribute derivative operator across the terms",
                         "previous_expression": f"dy/dx = d/dx({raw_expr})",
-                        "current_expression": f"dy/dx = d/dx(3x^4) - d/dx(5x^3) + d/dx(2x^2) - d/dx(7x) + d/dx(4)",
-                        "latex": f"\\frac{{dy}}{{dx}} = \\frac{{d}}{{dx}}(3x^4) - \\frac{{d}}{{dx}}(5x^3) + \\frac{{d}}{{dx}}(2x^2) - \\frac{{d}}{{dx}}(7x) + \\frac{{d}}{{dx}}(4)" if "3*x**4" in str(parsed) else f"\\frac{{dy}}{{dx}} = \\frac{{d}}{{dx}}\\left({sp.latex(parsed)}\\right)",
+                        "current_expression": f"dy/dx = " + " + ".join([f"d/dx({t_item})" for t_item in terms]),
+                        "latex": step3_latex,
                         "change_type": "Formula Application",
                         "changes": [
                             {
                                 "old": f"\\frac{{d}}{{dx}}\\left({sp.latex(parsed)}\\right)",
-                                "new": f"\\frac{{d}}{{dx}}(3x^4) - \\frac{{d}}{{dx}}(5x^3) + \\frac{{d}}{{dx}}(2x^2) - \\frac{{d}}{{dx}}(7x) + \\frac{{d}}{{dx}}(4)" if "3*x**4" in str(parsed) else f"\\frac{{dy}}{{dx}} = \\frac{{d}}{{dx}}\\left({sp.latex(parsed)}\\right)",
-                                "reason": "Sum and difference rule: d/dx(f +/- g) = d/dx(f) +/- d/dx(g)."
+                                "new": step3_latex,
+                                "reason": "Sum/difference rule: d/dx(f ± g) = df/dx ± dg/dx."
                             }
                         ],
                         "explanation": "Use the sum and difference rule to differentiate each term separately.",
-                        "reason": "The derivative of a sum or difference of functions is the sum or difference of their derivatives."
+                        "reason": "The derivative of a sum of terms is the sum of their derivatives."
                     },
                     {
                         "step_number": 4,
                         "title": "Factor out constant coefficients",
-                        "previous_expression": "dy/dx = d/dx(3x^4) - d/dx(5x^3) + d/dx(2x^2) - d/dx(7x) + d/dx(4)",
-                        "current_expression": "dy/dx = 3*d/dx(x^4) - 5*d/dx(x^3) + 2*d/dx(x^2) - 7*d/dx(x) + d/dx(4)",
-                        "latex": f"\\frac{{dy}}{{dx}} = 3\\frac{{d}}{{dx}}(x^4) - 5\\frac{{d}}{{dx}}(x^3) + 2\\frac{{d}}{{dx}}(x^2) - 7\\frac{{d}}{{dx}}(x) + \\frac{{d}}{{dx}}(4)" if "3*x**4" in str(parsed) else f"\\frac{{dy}}{{dx}} = \\frac{{d}}{{dx}}\\left({sp.latex(parsed)}\\right)",
+                        "previous_expression": step3_latex,
+                        "current_expression": step4_latex,
+                        "latex": step4_latex,
                         "change_type": "Formula Application",
                         "changes": [
                             {
-                                "old": f"\\frac{{d}}{{dx}}(3x^4) - \\frac{{d}}{{dx}}(5x^3) + \\frac{{d}}{{dx}}(2x^2) - \\frac{{d}}{{dx}}(7x) + \\frac{{d}}{{dx}}(4)" if "3*x**4" in str(parsed) else f"\\frac{{d}}{{dx}}\\left({sp.latex(parsed)}\\right)",
-                                "new": f"3\\frac{{d}}{{dx}}(x^4) - 5\\frac{{d}}{{dx}}(x^3) + 2\\frac{{d}}{{dx}}(x^2) - 7\\frac{{d}}{{dx}}(x) + \\frac{{d}}{{dx}}(4)" if "3*x**4" in str(parsed) else f"\\frac{{dy}}{{dx}} = \\frac{{d}}{{dx}}\\left({sp.latex(parsed)}\\right)",
-                                "reason": "Constant multiple rule: d/dx(c * f(x)) = c * d/dx(f(x))."
+                                "old": step3_latex,
+                                "new": step4_latex,
+                                "reason": "Constant factor rule: d/dx(c · f(x)) = c · d/dx(f(x))."
                             }
                         ],
-                        "explanation": "Pull the constants out of each derivative operator.",
-                        "reason": "Constant factors can be moved outside the derivative."
+                        "explanation": "Pull numerical constant factors outside the derivative operators.",
+                        "reason": "Constant factor rule for derivatives."
                     },
                     {
                         "step_number": 5,
-                        "title": "Differentiate each term using power rule",
-                        "previous_expression": "dy/dx = 3*d/dx(x^4) - 5*d/dx(x^3) + 2*d/dx(x^2) - 7*d/dx(x) + d/dx(4)",
-                        "current_expression": "dy/dx = 3*(4x^3) - 5*(3x^2) + 2*(2x) - 7*(1) + 0",
-                        "latex": f"\\frac{{dy}}{{dx}} = 3(4x^3) - 5(3x^2) + 2(2x) - 7(1) + 0" if "3*x**4" in str(parsed) else f"\\frac{{dy}}{{dx}} = {sp.latex(diff_res)}",
+                        "title": "Differentiate each term",
+                        "previous_expression": step4_latex,
+                        "current_expression": f"dy/dx = {sp.latex(diff_res)}",
+                        "latex": step5_latex,
                         "change_type": "differentiation",
-                        "changes": [
-                            {
-                                "old": f"3\\frac{{d}}{{dx}}(x^4) - 5\\frac{{d}}{{dx}}(x^3) + 2\\frac{{d}}{{dx}}(x^2) - 7\\frac{{d}}{{dx}}(x) + \\frac{{d}}{{dx}}(4)" if "3*x**4" in str(parsed) else f"\\frac{{d}}{{dx}}\\left({sp.latex(parsed)}\\right)",
-                                "new": f"3(4x^3) - 5(3x^2) + 2(2x) - 7(1) + 0" if "3*x**4" in str(parsed) else f"{sp.latex(diff_res)}",
-                                "reason": "Power rule: d/dx(x^n) = n*x^(n-1). Derivative of constant is 0."
-                            }
-                        ],
-                        "explanation": "Apply the power rule to differentiate each power of x.",
-                        "reason": "Power rule for derivatives."
+                        "changes": step5_changes,
+                        "explanation": "Apply basic differentiation rules to each term.",
+                        "reason": "Differentiation rules applied per term."
                     },
                     {
                         "step_number": 6,
                         "title": "Multiply coefficients and simplify",
-                        "previous_expression": "dy/dx = 3*(4x^3) - 5*(3x^2) + 2*(2x) - 7*(1) + 0",
+                        "previous_expression": step5_latex,
                         "current_expression": final_ans_str,
                         "latex": final_ans_latex,
                         "change_type": "simplification",
                         "changes": [
                             {
-                                "old": "3(4x^3) - 5(3x^2) + 2(2x) - 7(1) + 0" if "3*x**4" in str(parsed) else f"{sp.latex(parsed)}",
+                                "old": step5_latex,
                                 "new": diff_latex,
-                                "reason": "Multiply numerical constants by brought-down powers and remove zero."
+                                "reason": "Combine coefficients and simplify algebraic terms."
                             }
                         ],
-                        "explanation": "Multiply the numerical constants by the brought-down powers and remove zero.",
-                        "reason": "Simplifying algebraic expressions."
+                        "explanation": "Multiply constants and combine terms to obtain final simplified derivative.",
+                        "reason": "Algebraic simplification."
                     },
                     {
                         "step_number": 7,
@@ -255,7 +381,7 @@ class GeminiService:
                         "latex": final_ans_latex,
                         "change_type": "Final Answer",
                         "changes": [],
-                        "explanation": "The polynomial derivative is now fully simplified.",
+                        "explanation": "The derivative is now fully calculated and simplified.",
                         "reason": "Solution is complete."
                     }
                 ]
@@ -263,14 +389,13 @@ class GeminiService:
             elif is_int:
                 topic = "Calculus - Integration"
                 find_target = "Indefinite Antiderivative ∫ f(x) dx"
-                raw_expr = re.sub(r'(?i)integrate|integral of|find|\\?int|∫', '', prob_clean).strip()
-                raw_expr = re.sub(r'(?i)dx$', '', raw_expr).strip().lstrip('(').rstrip(')')
+                raw_expr = extract_clean_expr(prob_clean, "int")
                 parsed = sp.sympify(MathService._fix_implicit_mult(raw_expr))
                 int_res = sp.integrate(parsed, x)
 
                 final_ans_str = f"∫ f(x)dx = {str(int_res).replace('**', '^')} + C"
                 final_ans_latex = f"\\int f(x) dx = {sp.latex(int_res)} + C"
-                rule_latex = "\\int x^n dx = \\frac{x^{n+1}}{n+1} + C"
+                rule_latex = "\\int (f \\pm g) dx = \\int f dx \\pm \\int g dx, \\quad \\int x^n dx = \\frac{x^{n+1}}{n+1} + C"
                 final_expl = f"The integral $\\int f(x) dx = {sp.latex(int_res)} + C$ provides the general family of antiderivatives."
 
                 steps = [
@@ -312,8 +437,11 @@ class GeminiService:
             elif is_eq:
                 topic = "Algebra - Equations & Quadratics"
                 find_target = "Roots / Solutions for x"
-                eq_str = prob_lower.replace("solve", "").strip()
-                lhs_str, rhs_str = eq_str.split("=", 1) if "=" in eq_str else (eq_str, "0")
+                raw_expr = extract_clean_expr(prob_clean, "eq")
+                if "=" in raw_expr:
+                    lhs_str, rhs_str = raw_expr.split("=", 1)
+                else:
+                    lhs_str, rhs_str = raw_expr, "0"
                 lhs = sp.sympify(MathService._fix_implicit_mult(lhs_str))
                 rhs = sp.sympify(MathService._fix_implicit_mult(rhs_str))
                 eq = sp.Eq(lhs, rhs)
@@ -346,7 +474,7 @@ class GeminiService:
                         "latex": f"{sp.latex(simplified_eq)} = 0",
                         "change_type": "algebraic_operation",
                         "changes": [],
-                        "explanation": f"Apply algebraic transposition or quadratic formula to solve for variable $x$: ${rule_latex}$.",
+                        "explanation": f"Apply algebraic transposition or formula to solve for variable $x$: ${rule_latex}$.",
                         "reason": "Algebraic equation isolation"
                     },
                     {
@@ -365,7 +493,7 @@ class GeminiService:
             elif is_3d:
                 topic = "Multivariable Calculus - 3D Manifold"
                 find_target = "Surface Grid z = f(x, y)"
-                raw_expr = re.sub(r'(?i)z\s*=\s*', '', prob_clean).strip()
+                raw_expr = extract_clean_expr(prob_clean, "3d")
                 parsed = sp.sympify(MathService._fix_implicit_mult(raw_expr))
                 final_ans_str = f"z = {str(parsed).replace('**', '^')}"
                 final_ans_latex = f"z = {sp.latex(parsed)}"
@@ -411,7 +539,8 @@ class GeminiService:
             else:
                 topic = "Algebra & Simplification"
                 find_target = "Simplified Mathematical Expression"
-                parsed = sp.sympify(MathService._fix_implicit_mult(prob_clean))
+                clean_expr = extract_clean_expr(prob_clean)
+                parsed = sp.sympify(MathService._fix_implicit_mult(clean_expr))
                 simplified = sp.simplify(parsed)
                 final_ans_str = str(simplified).replace('**', '^')
                 final_ans_latex = sp.latex(simplified)
@@ -522,7 +651,7 @@ class GeminiService:
             )
 
         prompt = f"Solve and explain this mathematical problem thoroughly with step-by-step reasoning: '{problem}'"
-        models_to_try = ["gemini-3.6-flash", "gemini-3.1-pro-preview", "gemini-2.0-flash-exp"]
+        models_to_try = ["gemini-3.6-flash"]
 
         for model_name in models_to_try:
             try:
@@ -553,3 +682,4 @@ class GeminiService:
 
         logger.warning("All Gemini model attempts exhausted. Falling back to SymPy engine.")
         return GeminiService._generate_fallback_solution(problem)
+

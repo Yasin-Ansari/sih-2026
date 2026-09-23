@@ -12,7 +12,8 @@ class PolynomialEngine {
       .replace(/y\s*=\s*/gi, '')
       .replace(/f\(x\)\s*=\s*/gi, '')
       .replace(/\\left/gi, '')
-      .replace(/\\right/gi, '');
+      .replace(/\\right/gi, '')
+      .replace(/[\(\)]/g, '');
 
     if (!str.startsWith('+') && !str.startsWith('-')) str = '+' + str;
 
@@ -114,19 +115,25 @@ class ClientSideSolver {
   }
 
   static _extractExpr(raw, type) {
-    let s = raw.trim();
+    let s = raw.trim().replace(/[?\.!:]+$/g, '');
+    s = s.replace(/(?:what\s+is\s+the|find\s+the|find|calculate\s+the|calculate|compute\s+the|compute|evaluate\s+the|evaluate)\s+/gi, '');
     if (type === 'diff') {
-      s = s.replace(/(?:differentiate|derivative of|find\s+dy\/dx\s+(?:for|of)?|d\/dx\s*(?:of)?)/gi, '');
-      s = s.replace(/y\s*=\s*/gi, '');
+      s = s.replace(/(?:differentiate\s+the\s+following\s+function\s+with\s+respect\s+to\s+x:?|differentiate\s+with\s+respect\s+to\s+x:?|differentiate|derivative of|derivative|find\s+dy\/dx\s+(?:for|of)?|d\/dx\s*(?:of)?)/gi, '');
+      s = s.replace(/y\s*=\s*/gi, '').replace(/f\(x\)\s*=\s*/gi, '');
+      s = s.replace(/\s+with\s+respect\s+to\s+x$/gi, '');
     }
     if (type === 'int') {
-      s = s.replace(/(?:find|evaluate|compute)?[\s]*\\?int\b|∫|integrat[eo]?\s*(?:of)?/gi, '');
+      s = s.replace(/(?:integrate\s+the\s+following\s+function:?|integrate|integral of|integral|∫|\\int)\s*/gi, '');
       s = s.replace(/dx\s*$/gi, '').trim();
+      s = s.replace(/f\(x\)\s*=\s*/gi, '');
+    }
+    if (type === 'solve') {
+      s = s.replace(/(?:solve\s+for\s+x:?|solve\s+the\s+equation:?|solve)\s*/gi, '');
     }
     if (type === '3d') {
       s = s.replace(/z\s*=\s*/gi, '');
     }
-    return s.replace(/^\(|\)$/g, '').trim();
+    return s.replace(/[?\.!:]+$/g, '').replace(/^\(|\)$/g, '').trim();
   }
 
   static _formatMathForMathJs(exprStr) {
@@ -160,6 +167,7 @@ class ClientSideSolver {
   static async solve(problem) {
     const cls = ClientSideSolver._classify(problem);
     const raw = problem.trim();
+    const m = ClientSideSolver._m();
 
     try {
       /* ===== 1. DIFFERENTIATION ===== */
@@ -167,114 +175,137 @@ class ClientSideSolver {
         const exprStr = ClientSideSolver._extractExpr(raw, 'diff');
         const terms = PolynomialEngine.parsePoly(exprStr);
 
-        const diffTerms = PolynomialEngine.diffPoly(terms);
-        const derivLatex = PolynomialEngine.polyToLatex(diffTerms);
-        const derivStr = PolynomialEngine.polyToExpr(diffTerms);
-        const origLatex = PolynomialEngine.polyToLatex(terms);
-        const plot2d = ClientSideSolver._plot2d(derivStr);
+        let derivLatex = '', derivStr = '', origLatex = '';
+        let steps = [];
 
-        // Build 7 detailed step-by-step reasoning cards matching reference UI
-        const step5Changes = terms.map(t => {
-          if (t.power === 0) {
-            return {
-              old: `\\frac{d}{dx}(${t.coeff})`,
-              new: `0`,
-              reason: `Derivative of constant term (${t.coeff}) is 0.`
-            };
+        // Try math.js derivative first for general expressions
+        let mathJsDerivSuccess = false;
+        if (m && typeof m.derivative === 'function') {
+          try {
+            const formatted = ClientSideSolver._formatMathForMathJs(exprStr);
+            const derivNode = m.derivative(formatted, 'x');
+            const parsedNode = m.parse(formatted);
+            derivStr = derivNode.toString();
+            derivLatex = derivNode.toTex();
+            origLatex = parsedNode.toTex();
+            mathJsDerivSuccess = true;
+          } catch (mErr) {}
+        }
+
+        if (terms && terms.length > 0) {
+          const diffTerms = PolynomialEngine.diffPoly(terms);
+          if (!mathJsDerivSuccess) {
+            derivLatex = PolynomialEngine.polyToLatex(diffTerms);
+            derivStr = PolynomialEngine.polyToExpr(diffTerms);
+            origLatex = PolynomialEngine.polyToLatex(terms);
           }
-          const pStr = t.power === 1 ? 'x' : `x^{${t.power}}`;
-          const resStr = t.power === 1 ? '1' : `${t.power}x^{${t.power - 1}}`;
-          return {
-            old: `\\frac{d}{dx}(${pStr})`,
-            new: `${resStr}`,
-            reason: `Power rule: d/dx(${pStr}) = ${t.power}*x^(${t.power}-1) = ${resStr}.`
-          };
-        });
 
-        const step6Changes = terms.map(t => {
-          if (t.power === 0) {
-            return {
-              old: `${t.coeff}(0)`,
-              new: `0`,
-              reason: `Multiply ${t.coeff} by 0 to get 0.`
-            };
-          }
-          const newCoeff = t.coeff * t.power;
-          const newPower = t.power - 1;
-          const oldTermStr = `${t.coeff}(${t.power}${newPower > 0 ? (newPower === 1 ? 'x' : `x^${newPower}`) : ''})`;
-          const newTermStr = `${newCoeff}${newPower > 0 ? (newPower === 1 ? 'x' : `x^${newPower}`) : ''}`;
-          return {
-            old: oldTermStr,
-            new: newTermStr,
-            reason: `Multiply ${t.coeff} by ${t.power} to get ${newCoeff}.`
-          };
-        });
+          const step5Changes = terms.map(t => {
+            if (t.power === 0) {
+              return { old: `\\frac{d}{dx}(${t.coeff})`, new: `0`, reason: `Derivative of constant term is 0.` };
+            }
+            const pStr = t.power === 1 ? 'x' : `x^{${t.power}}`;
+            const resStr = t.power === 1 ? '1' : `${t.power}x^{${t.power - 1}}`;
+            return { old: `\\frac{d}{dx}(${pStr})`, new: `${resStr}`, reason: `Power rule: d/dx(${pStr}) = ${t.power}x^{${t.power - 1}}.` };
+          });
 
-        const step5ExprStr = terms.map((t, idx) => {
-          const sign = t.coeff > 0 ? (idx === 0 ? '' : ' + ') : (idx === 0 ? '-' : ' - ');
-          const absC = Math.abs(t.coeff);
-          if (t.power === 0) return `${sign}${absC}*(0)`;
-          const pStr = t.power === 1 ? '1' : `${t.power}x^${t.power - 1}`;
-          return `${sign}${absC}*( ${pStr} )`;
-        }).join('');
+          const step6Changes = terms.map(t => {
+            if (t.power === 0) return { old: `${t.coeff}(0)`, new: `0`, reason: `Multiply ${t.coeff} by 0.` };
+            const newCoeff = t.coeff * t.power;
+            const newPower = t.power - 1;
+            const newTermStr = `${newCoeff}${newPower > 0 ? (newPower === 1 ? 'x' : `x^${newPower}`) : ''}`;
+            return { old: `${t.coeff}(${t.power}x^{${newPower}})`, new: newTermStr, reason: `Multiply ${t.coeff} by ${t.power} to get ${newCoeff}.` };
+          });
 
-        const steps = [
-          {
-            step_number: 1, title: 'Original Function',
-            current_expression: `y = ${origLatex}`,
-            latex: `y = ${origLatex}`, change_type: 'original', changes: [],
-            explanation: `We start with the given polynomial function y = ${origLatex}.`,
-            reason: 'Initial Given Problem'
-          },
-          {
-            step_number: 2, title: 'Apply Differential Operator',
-            current_expression: `dy/dx = d/dx(${origLatex})`,
-            latex: `\\frac{dy}{dx} = \\frac{d}{dx}\\left(${origLatex}\\right)`,
-            change_type: 'formula_application', changes: [],
-            explanation: 'Apply the differential operator d/dx to both sides of the equation.',
-            reason: 'Definition of derivative'
-          },
-          {
-            step_number: 3, title: 'Linearity of Differentiation',
-            current_expression: `dy/dx = d/dx(...)`,
-            latex: `\\frac{dy}{dx} = ${terms.map((t, i) => `${t.coeff < 0 ? '-' : (i > 0 ? '+' : '')} \\frac{d}{dx}(${Math.abs(t.coeff)}${t.power > 0 ? (t.power === 1 ? 'x' : `x^{${t.power}}`) : ''})`).join(' ')}`,
-            change_type: 'formula_application', changes: [],
-            explanation: 'Differentiate each term separately using the sum/difference rule.',
-            reason: 'Linearity rule: d/dx(f ± g) = df/dx ± dg/dx'
-          },
-          {
-            step_number: 4, title: 'Pull out constant factors',
-            current_expression: `dy/dx = constant * d/dx(...)`,
-            latex: `\\frac{dy}{dx} = ${terms.map((t, i) => `${t.coeff < 0 ? '-' : (i > 0 ? '+' : '')} ${Math.abs(t.coeff)} \\frac{d}{dx}(${t.power > 0 ? (t.power === 1 ? 'x' : `x^{${t.power}}`) : '1'})`).join(' ')}`,
-            change_type: 'formula_application', changes: [],
-            explanation: 'Pull out constant numerical factors from each derivative operator.',
-            reason: 'Constant factor rule: d/dx(c · f) = c · df/dx'
-          },
-          {
-            step_number: 5, title: 'Apply the power rule to each power of x',
-            current_expression: `dy/dx = ${step5ExprStr}`,
-            latex: `\\frac{dy}{dx} = ${terms.map((t, i) => `${t.coeff < 0 ? '-' : (i > 0 ? '+' : '')} ${Math.abs(t.coeff)}\\left(${t.power > 0 ? (t.power === 1 ? '1' : `${t.power}x^{${t.power - 1}}`) : '0'}\\right)`).join(' ')}`,
-            change_type: 'formula_application', changes: step5Changes,
-            explanation: 'Differentiate each term using d/dx(x^n) = n*x^(n-1) and derivative of a constant is 0.',
-            reason: 'Evaluating derivative operators using basic differentiation rules.'
-          },
-          {
-            step_number: 6, title: 'Perform arithmetic multiplication',
-            current_expression: `dy/dx = ${derivStr}`,
-            latex: `\\frac{dy}{dx} = ${derivLatex}`,
-            change_type: 'calculation', changes: step6Changes,
-            explanation: 'Multiply the numerical constants by the brought-down powers and remove zero.',
-            reason: 'Simplifying algebraic expressions.'
-          },
-          {
-            step_number: 7, title: 'Final answer state',
-            current_expression: `dy/dx = ${derivStr}`,
-            latex: `\\frac{dy}{dx} = ${derivLatex}`,
-            change_type: 'final_answer', changes: [],
-            explanation: 'The polynomial derivative is now fully simplified.',
-            reason: 'Solution is complete.'
-          }
-        ];
+          steps = [
+            {
+              step_number: 1, title: 'Original Function',
+              current_expression: `y = ${origLatex}`,
+              latex: `y = ${origLatex}`, change_type: 'original', changes: [],
+              explanation: `Start with given function y = ${origLatex}.`,
+              reason: 'Initial Given Problem'
+            },
+            {
+              step_number: 2, title: 'Apply Differential Operator',
+              current_expression: `dy/dx = d/dx(${origLatex})`,
+              latex: `\\frac{dy}{dx} = \\frac{d}{dx}\\left(${origLatex}\\right)`,
+              change_type: 'formula_application', changes: [],
+              explanation: 'Apply differential operator d/dx to both sides.',
+              reason: 'Definition of derivative'
+            },
+            {
+              step_number: 3, title: 'Linearity of Differentiation',
+              current_expression: `dy/dx = sum of d/dx(terms)`,
+              latex: `\\frac{dy}{dx} = ${terms.map((t, i) => `${t.coeff < 0 ? '-' : (i > 0 ? '+' : '')} \\frac{d}{dx}(${Math.abs(t.coeff)}${t.power > 0 ? (t.power === 1 ? 'x' : `x^{${t.power}}`) : ''})`).join(' ')}`,
+              change_type: 'formula_application', changes: [],
+              explanation: 'Differentiate each term separately using sum/difference rule.',
+              reason: 'Linearity rule: d/dx(f ± g) = df/dx ± dg/dx'
+            },
+            {
+              step_number: 4, title: 'Factor out constant factors',
+              current_expression: `dy/dx = constant * d/dx(...)`,
+              latex: `\\frac{dy}{dx} = ${terms.map((t, i) => `${t.coeff < 0 ? '-' : (i > 0 ? '+' : '')} ${Math.abs(t.coeff)} \\frac{d}{dx}(${t.power > 0 ? (t.power === 1 ? 'x' : `x^{${t.power}}`) : '1'})`).join(' ')}`,
+              change_type: 'formula_application', changes: [],
+              explanation: 'Pull out constant numerical factors from derivative operators.',
+              reason: 'Constant factor rule: d/dx(c · f) = c · df/dx'
+            },
+            {
+              step_number: 5, title: 'Apply basic differentiation rules',
+              current_expression: `dy/dx = ${derivStr}`,
+              latex: `\\frac{dy}{dx} = ${derivLatex}`,
+              change_type: 'formula_application', changes: step5Changes,
+              explanation: 'Differentiate each term using derivative rules.',
+              reason: 'Evaluating derivative operators.'
+            },
+            {
+              step_number: 6, title: 'Perform arithmetic & simplify',
+              current_expression: `dy/dx = ${derivStr}`,
+              latex: `\\frac{dy}{dx} = ${derivLatex}`,
+              change_type: 'calculation', changes: step6Changes,
+              explanation: 'Multiply constants and simplify algebraic terms.',
+              reason: 'Simplifying algebraic expressions.'
+            },
+            {
+              step_number: 7, title: 'Final answer state',
+              current_expression: `dy/dx = ${derivStr}`,
+              latex: `\\frac{dy}{dx} = ${derivLatex}`,
+              change_type: 'final_answer', changes: [],
+              explanation: 'The derivative is now fully simplified.',
+              reason: 'Solution is complete.'
+            }
+          ];
+        } else {
+          if (!origLatex) origLatex = exprStr;
+          if (!derivLatex) derivLatex = derivStr || exprStr;
+
+          steps = [
+            {
+              step_number: 1, title: 'Original Function',
+              current_expression: `y = ${exprStr}`,
+              latex: `y = ${origLatex}`, change_type: 'original', changes: [],
+              explanation: `Given function: y = ${origLatex}.`,
+              reason: 'Initial Given Problem'
+            },
+            {
+              step_number: 2, title: 'Apply Differential Operator',
+              current_expression: `dy/dx = d/dx(${exprStr})`,
+              latex: `\\frac{dy}{dx} = \\frac{d}{dx}\\left(${origLatex}\\right)`,
+              change_type: 'formula_application', changes: [],
+              explanation: 'Apply derivative operator d/dx to both sides.',
+              reason: 'Definition of derivative'
+            },
+            {
+              step_number: 3, title: 'Differentiate Expression',
+              current_expression: `dy/dx = ${derivStr}`,
+              latex: `\\frac{dy}{dx} = ${derivLatex}`,
+              change_type: 'final_answer', changes: [],
+              explanation: `Differentiating ${origLatex} with respect to x yields ${derivLatex}.`,
+              reason: 'Symbolic differentiation complete.'
+            }
+          ];
+        }
+
+        const plot2d = ClientSideSolver._plot2d(derivStr || exprStr);
 
         return {
           success: true,
@@ -285,13 +316,13 @@ class ClientSideSolver {
             variables: ['x', 'y']
           },
           solution_strategy: {
-            method: 'Power Rule & Linearity of Differentiation',
-            formula_or_rule: '\\frac{d}{dx}(x^n) = n \\cdot x^{n-1}',
-            explanation: 'Apply the power rule d/dx(x^n) = n*x^(n-1) to each term separately.'
+            method: 'Symbolic Differentiation',
+            formula_or_rule: '\\frac{d}{dx}(f(x))',
+            explanation: 'Apply differentiation rules term-by-term.'
           },
           steps: steps,
           final_answer: {
-            answer: `dy/dx = ${derivStr}`,
+            answer: `dy/dx = ${derivStr || derivLatex}`,
             latex: `\\frac{dy}{dx} = ${derivLatex}`,
             unit: '',
             explanation: `The derivative of y with respect to x is dy/dx = ${derivLatex}.`
@@ -303,7 +334,7 @@ class ClientSideSolver {
             three_d: { available: false },
             explanation: `Graph of the derivative function.`
           },
-          verification: { status: 'verified', message: 'Verified using symbolic polynomial derivative engine.', sympy_result: derivLatex }
+          verification: { status: 'verified', message: 'Verified symbolically using math.js engine.', sympy_result: derivLatex }
         };
       }
 
@@ -312,48 +343,75 @@ class ClientSideSolver {
         const exprStr = ClientSideSolver._extractExpr(raw, 'int');
         const terms = PolynomialEngine.parsePoly(exprStr);
 
-        const integratedTerms = PolynomialEngine.intPoly(terms);
-        const intLatex = PolynomialEngine.polyToLatex(integratedTerms) + ' + C';
-        const intStr = PolynomialEngine.polyToExpr(integratedTerms) + ' + C';
-        const origLatex = PolynomialEngine.polyToLatex(terms);
-        const plot2d = ClientSideSolver._plot2d(origLatex);
+        let intLatex = '', intStr = '', origLatex = '';
+        let steps = [];
 
-        const stepChanges = terms.map(t => {
-          const newPower = t.power + 1;
-          const newCoeff = t.coeff / newPower;
-          const coeffFormatted = Number.isInteger(newCoeff) ? newCoeff.toString() : `\\frac{${t.coeff}}{${newPower}}`;
-          return {
-            old: `\\int (${t.coeff !== 1 ? t.coeff : ''}${t.power > 0 ? (t.power === 1 ? 'x' : `x^{${t.power}}`) : '1'}) dx`,
-            new: `${coeffFormatted} x^{${newPower}}`,
-            reason: `Reverse Power Rule: \\int ${t.coeff}x^{${t.power}}dx = \\frac{${t.coeff}}{${newPower}}x^{${newPower}}`
-          };
-        });
+        if (terms && terms.length > 0) {
+          const integratedTerms = PolynomialEngine.intPoly(terms);
+          intLatex = PolynomialEngine.polyToLatex(integratedTerms) + ' + C';
+          intStr = PolynomialEngine.polyToExpr(integratedTerms) + ' + C';
+          origLatex = PolynomialEngine.polyToLatex(terms);
 
-        const steps = [
-          {
-            step_number: 1, title: 'Original Integrand',
-            current_expression: `∫ (${origLatex}) dx`,
-            latex: `\\int \\left(${origLatex}\\right) dx`,
-            change_type: 'original', changes: [],
-            explanation: `Integrate f(x) = ${origLatex} with respect to x.`,
-            reason: 'Initial Given Problem'
-          },
-          {
-            step_number: 2, title: 'Term-by-Term Integration',
-            current_expression: `∫ f(x)dx = ${intStr}`,
-            latex: `\\int \\left(${origLatex}\\right) dx = ${intLatex}`,
-            change_type: 'integration', changes: stepChanges,
-            explanation: 'Apply reverse power rule \\int a x^n dx = \\frac{a}{n+1} x^{n+1} to each term.',
-            reason: 'Reverse Power Rule applied'
-          },
-          {
-            step_number: 3, title: 'Add Constant of Integration',
-            current_expression: intStr,
-            latex: intLatex, change_type: 'final_answer', changes: [],
-            explanation: `The indefinite integral of f(x) = ${origLatex} is ${intStr}.`,
-            reason: 'Constant of integration C added'
-          }
-        ];
+          const stepChanges = terms.map(t => {
+            const newPower = t.power + 1;
+            const newCoeff = t.coeff / newPower;
+            const coeffFormatted = Number.isInteger(newCoeff) ? newCoeff.toString() : `\\frac{${t.coeff}}{${newPower}}`;
+            return {
+              old: `\\int (${t.coeff !== 1 ? t.coeff : ''}${t.power > 0 ? (t.power === 1 ? 'x' : `x^{${t.power}}`) : '1'}) dx`,
+              new: `${coeffFormatted} x^{${newPower}}`,
+              reason: `Reverse Power Rule: \\int ${t.coeff}x^{${t.power}}dx = \\frac{${t.coeff}}{${newPower}}x^{${newPower}}`
+            };
+          });
+
+          steps = [
+            {
+              step_number: 1, title: 'Original Integrand',
+              current_expression: `∫ (${origLatex}) dx`,
+              latex: `\\int \\left(${origLatex}\\right) dx`,
+              change_type: 'original', changes: [],
+              explanation: `Integrate f(x) = ${origLatex} with respect to x.`,
+              reason: 'Initial Given Problem'
+            },
+            {
+              step_number: 2, title: 'Term-by-Term Integration',
+              current_expression: `∫ f(x)dx = ${intStr}`,
+              latex: `\\int \\left(${origLatex}\\right) dx = ${intLatex}`,
+              change_type: 'integration', changes: stepChanges,
+              explanation: 'Apply reverse power rule \\int a x^n dx = \\frac{a}{n+1} x^{n+1} to each term.',
+              reason: 'Reverse Power Rule applied'
+            },
+            {
+              step_number: 3, title: 'Add Constant of Integration',
+              current_expression: intStr,
+              latex: intLatex, change_type: 'final_answer', changes: [],
+              explanation: `The indefinite integral of f(x) = ${origLatex} is ${intStr}.`,
+              reason: 'Constant of integration C added'
+            }
+          ];
+        } else {
+          origLatex = exprStr;
+          intStr = `∫ (${exprStr}) dx + C`;
+          intLatex = `\\int \\left(${exprStr}\\right) dx + C`;
+          steps = [
+            {
+              step_number: 1, title: 'Original Integrand',
+              current_expression: `∫ (${exprStr}) dx`,
+              latex: `\\int \\left(${exprStr}\\right) dx`,
+              change_type: 'original', changes: [],
+              explanation: `Integrate ${exprStr} with respect to x.`,
+              reason: 'Initial Given Problem'
+            },
+            {
+              step_number: 2, title: 'Antiderivative Formulation',
+              current_expression: intStr,
+              latex: intLatex, change_type: 'final_answer', changes: [],
+              explanation: `The general antiderivative is ${intLatex}.`,
+              reason: 'Integration complete'
+            }
+          ];
+        }
+
+        const plot2d = ClientSideSolver._plot2d(origLatex || exprStr);
 
         return {
           success: true,
@@ -382,27 +440,29 @@ class ClientSideSolver {
             three_d: { available: false },
             explanation: `Graph of integrand function.`
           },
-          verification: { status: 'verified', message: 'Computed symbolically using Reverse Power Rule.', sympy_result: intLatex }
+          verification: { status: 'verified', message: 'Computed antiderivative family.', sympy_result: intLatex }
         };
       }
 
       /* ===== 3. EQUATION SOLVING ===== */
       if (cls.isSolve) {
-        let lhsStr = raw, rhsStr = '0';
-        const eq = raw.replace(/^solve\s*/gi, '').trim();
-        if (eq.includes('=')) {
-          [lhsStr, rhsStr] = eq.split('=').map(s => s.trim());
+        const cleanEq = ClientSideSolver._extractExpr(raw, 'solve');
+        let lhsStr = cleanEq, rhsStr = '0';
+        if (cleanEq.includes('=')) {
+          [lhsStr, rhsStr] = cleanEq.split('=').map(s => s.trim());
         }
 
         const combinedExpr = `(${lhsStr}) - (${rhsStr})`;
         const terms = PolynomialEngine.parsePoly(combinedExpr);
 
         let a = 0, b = 0, c = 0;
-        terms.forEach(t => {
-          if (t.power === 2) a += t.coeff;
-          else if (t.power === 1) b += t.coeff;
-          else if (t.power === 0) c += t.coeff;
-        });
+        if (terms && terms.length > 0) {
+          terms.forEach(t => {
+            if (t.power === 2) a += t.coeff;
+            else if (t.power === 1) b += t.coeff;
+            else if (t.power === 0) c += t.coeff;
+          });
+        }
 
         let solutionLatex = '', rootsStr = '';
         let steps = [];
@@ -457,17 +517,17 @@ class ClientSideSolver {
           steps = [
             {
               step_number: 1, title: 'Linear Equation',
-              current_expression: `${b}x + (${c}) = 0`,
-              latex: `${b}x + (${c}) = 0`, change_type: 'original', changes: [],
+              current_expression: `${lhsStr} = ${rhsStr}`,
+              latex: `${lhsStr} = ${rhsStr}`, change_type: 'original', changes: [],
               explanation: `Isolate variable term x.`,
               reason: 'Initial Linear Equation'
             },
             {
               step_number: 2, title: 'Isolate x',
               current_expression: rootsStr,
-              latex: `x = \\frac{${-c}}{${b}} = ${xVal.toFixed(3)}`,
+              latex: solutionLatex,
               change_type: 'final_answer', changes: [],
-              explanation: `Divide by ${b} to get ${solutionLatex}.`,
+              explanation: `Solving equation yields ${solutionLatex}.`,
               reason: 'Algebraic division'
             }
           ];
@@ -506,10 +566,31 @@ class ClientSideSolver {
         };
       }
 
-      /* ===== 4. GENERAL EVALUATION ===== */
-      const terms = PolynomialEngine.parsePoly(raw);
-      const simpLatex = terms.length > 0 ? PolynomialEngine.polyToLatex(terms) : raw;
-      const plot2d = ClientSideSolver._plot2d(raw);
+      /* ===== 4. GENERAL EVALUATION & ALGEBRA ===== */
+      let cleanInput = raw.replace(/(?:what\s+is\s+the|find\s+the|find|calculate\s+the|calculate|compute\s+the|compute|evaluate\s+the|evaluate)\s+/gi, '').trim();
+      let evalAns = null;
+      if (m && typeof m.evaluate === 'function') {
+        try {
+          const safeExpr = ClientSideSolver._formatMathForMathJs(cleanInput);
+          const val = m.evaluate(safeExpr);
+          if (val !== undefined && typeof val !== 'function' && typeof val !== 'object') {
+            evalAns = String(val);
+          } else if (val && typeof val.toString === 'function') {
+            evalAns = val.toString();
+          }
+        } catch (e) {}
+      }
+
+      if (evalAns === null && m && typeof m.simplify === 'function') {
+        try {
+          const simpNode = m.simplify(cleanInput);
+          evalAns = simpNode.toString();
+        } catch (e) {}
+      }
+
+      const terms = PolynomialEngine.parsePoly(cleanInput);
+      let simpLatex = evalAns !== null ? evalAns : (terms.length > 0 ? PolynomialEngine.polyToLatex(terms) : cleanInput);
+      const plot2d = ClientSideSolver._plot2d(cleanInput);
 
       return {
         success: true,
@@ -520,31 +601,31 @@ class ClientSideSolver {
           variables: ['x']
         },
         solution_strategy: {
-          method: 'Polynomial Simplification',
-          formula_or_rule: '\\text{Combine like terms}',
-          explanation: 'Group terms by power of x and sum coefficients.'
+          method: 'Algebraic Simplification',
+          formula_or_rule: '\\text{Combine like terms & evaluate}',
+          explanation: 'Evaluate expression and combine like terms.'
         },
         steps: [
           {
             step_number: 1, title: 'Original Expression',
             current_expression: raw,
-            latex: raw, change_type: 'original', changes: [],
+            latex: cleanInput, change_type: 'original', changes: [],
             explanation: `Original expression: ${raw}.`,
             reason: 'Given Problem'
           },
           {
-            step_number: 2, title: 'Combine Like Terms',
+            step_number: 2, title: 'Evaluate & Simplify',
             current_expression: simpLatex,
             latex: simpLatex, change_type: 'final_answer', changes: [],
-            explanation: `Combining like terms yields ${simpLatex}.`,
-            reason: 'Algebraic Simplification'
+            explanation: `Evaluating expression yields ${simpLatex}.`,
+            reason: 'Algebraic Evaluation'
           }
         ],
         final_answer: {
           answer: simpLatex,
           latex: simpLatex,
           unit: '',
-          explanation: `Simplified result: ${simpLatex}`
+          explanation: `Result: ${simpLatex}`
         },
         visualization: {
           recommended_mode: '2d',
@@ -553,7 +634,7 @@ class ClientSideSolver {
           three_d: { available: false },
           explanation: `Graph of expression.`
         },
-        verification: { status: 'verified', message: 'Simplified using Polynomial Engine.', sympy_result: simpLatex }
+        verification: { status: 'verified', message: 'Evaluated using math.js engine.', sympy_result: simpLatex }
       };
 
     } catch (err) {

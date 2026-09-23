@@ -2,7 +2,7 @@ import os
 from google import genai
 from dotenv import load_dotenv
 
-load_dotenv("c:/Users/yasin/Desktop/SIH2/backend/.env")
+load_dotenv("c:/Users/yasin/Desktop/SIH_2026/backend/.env")
 
 key = os.environ.get("GEMINI_API_KEY", "")
 client = genai.Client(api_key=key)
