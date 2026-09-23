@@ -7,11 +7,22 @@ class MathService:
     @staticmethod
     def _fix_implicit_mult(expr_str: str) -> str:
         """
-        Converts implicit multiplication like '3x^4' to '3*x**4' for SymPy parsing.
+        Converts implicit multiplication like '3x^4' to '3*x**4' and '(x+1)(x+2)' to '(x+1)*(x+2)' for SymPy parsing.
         """
         s = expr_str.replace('^', '**')
+        s = s.replace('∫', '').replace('√', 'sqrt').replace('π', 'pi')
         s = re.sub(r'(\d+)\s*([a-zA-Z\(])', r'\1*\2', s)
         s = re.sub(r'([a-zA-Z\)])\s*(\d+)', r'\1*\2', s)
+        s = re.sub(r'\)\s*\(', r')*(', s)
+        s = re.sub(r'\)\s*([a-zA-Z])', r')*\1', s)
+        
+        func_names = {'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'log', 'ln', 'exp', 'sqrt', 'abs', 'sec', 'csc', 'cot', 'f'}
+        def replace_var_paren(m):
+            name = m.group(1)
+            if name.lower() in func_names:
+                return m.group(0)
+            return f"{name}*("
+        s = re.sub(r'\b([a-zA-Z]+)\s*\(', replace_var_paren, s)
         return s
 
     @staticmethod
